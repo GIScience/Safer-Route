@@ -76,15 +76,18 @@ roadsDC <- roadsDC |>
 st_geometry(roadsDC) <- roadsDC_geom
 
 # Create a temporary data frame with the same number of rows as roadsDC
-temp_df <- data.frame(matrix(ncol = 10, nrow = nrow(roadsDC)))
+safety_df <- roadsDC |> 
+  select(osm_id) |> 
+  st_drop_geometry()
 
 # Generate random scores 1-10 for each column
 for (i in 1:10) {
-  temp_df[, i] <- sample(1:10, size = nrow(roadsDC), replace = TRUE)
+  new_column_name <- paste("safetyscore", i, sep = "")
+  safety_df[, new_column_name] <- sample(1:10, size = nrow(roadsDC), replace = TRUE)
 }
 
 # Calculate row-wise mean
-row_means <- rowMeans(temp_df, na.rm = TRUE)
+row_means <- rowMeans(safety_df[, !names(safety_df) %in% "osm_id"], na.rm = TRUE)
 
 # Add the calculated row means as a new column to roadsDC
 roadsDC$mean_safetyscore <- row_means
@@ -98,23 +101,30 @@ mapview(roadsDC, zcol = "mean_safetyscore")
 
 
 # Routing test and setting up graph
+roadsDC <- st_read("data/roadsDC.gpkg") 
 
-normalize <- function(x) {
-  return ((x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
-}
+roadsDC <- roadsDC |> 
+  select(-mean_safetyscore)
 
 # Calculate edge lengths
 net <- as_sfnetwork(roadsDC, directed = FALSE) |> 
   activate("edges") |> 
   mutate(edge_len = edge_length())
 
+
+
 # Normalize weights from 0 to 1 so that they can be equally weighted
+normalize <- function(x) {
+  return ((x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
+}
+
+
 net <- net |>
   activate("edges") |>
   mutate(
     norm_edge_len = as.numeric(normalize(edge_len)),
-    norm_safety = normalize(mean_safetyscore),
-    norm_brightness = normalize(brightness_zscore)
+    norm_brightness = normalize(brightness_zscore),
+    norm_safety = normalize(mean_safetyscore)
   )
 
 # Create a composite weight
@@ -126,6 +136,30 @@ net <- net |>
 
 # Test shortest path
 shortest_path <- st_network_paths(net,  from = 221, to = 110, weights = "composite_weight")
+
+node_ids <- shortest_path |>
+  pull(node_paths)
+
+net_nodes <- net |>
+  activate("edges") |>
+  st_as_sf() 
+
+path_coords <- net_nodes[node_ids[[1]], ]
+
+path_coords <- path_coords |> 
+  mutate(new_safetyscore = 7) |> 
+  select(new_safetyscore, osm_id) |> 
+  st_drop_geometry()
+
+safety_df <- left_join(safety_df, path_coords, by = "osm_id")
+
+row_means <- rowMeans(safety_df[, !names(safety_df) %in% "osm_id"], na.rm = TRUE)
+
+# Add the calculated row means as a new column to roadsDC
+roadsDC$mean_safetyscore <- row_means
+
+
+
 
 # Plot output
 plot_path = function(node_path) {
