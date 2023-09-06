@@ -1,18 +1,56 @@
+# Head ---------------------------------
+# purpose: Script to retrieve all relevant datasets
+# author: Charlie
+# revised by: Marcel
+#
+#
+#1 Libraries ---------------------------------
+
+
+library(tidyverse)
 library(sf)
 library(tidyverse)
 library(mapview)
 library(sfnetworks)
 library(tidygraph)
-library(dplyr)
+library(osmextract)
+
+library(tictoc)
 
 
-# Read in the datasets
+#2 Input Data ---------------------------------
+
+if (!dir.exists("data")) {
+  dir.create("data")
+}
+
+tic("Downloaded street lights from DC")
+#file.remove("data/Street_Lights.geojson")
+if (!file.exists("data/Street_Lights.geojson")) {
+  download.file(
+    "https://opendata.arcgis.com/api/v3/datasets/6cb6520725b0489d9a209a337818fad1_90/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1",
+    destfile = "data/Street_Lights.geojson",
+    mode = "wb",
+    quiet = T,
+    timeout = 1000
+  )
+}
+toc()
+
+
+
 street_lightsDC <- st_read("data/Street_Lights.geojson")
-roadsDC <- st_read("data/district-of-columbia-roads.osm.pbf", layer = 'lines')
+#roadsDC <- st_read("data/district-of-columbia-roads.osm.pbf", layer = 'lines')
 
-#Filter road types
-roadsDC <- roadsDC  |> 
-  filter(highway %in% c("motorway", "motorway_link", "trunk_link", "trunk", "primary", "secondary", "tertiary", "residential", "primary_link", "secondary_link", "tertiary_link"))
+roadsDC = oe_get(
+  "us/district-of-columbia", # pbf file of Washington
+  quiet = FALSE, # verbose execution
+  query = "SELECT *
+  FROM 'lines'
+  WHERE highway in
+  ('footway', 'path', 'motorway', 'motorway_link', 'trunk_link', 'trunk', 'primary', 'secondary', 'tertiary', 'residential', 'primary_link', 'secondary_link', 'tertiary_link')",
+  download_directory = "data"
+)
 
 # Coordinate transformation
 street_lightsDC <- st_transform(street_lightsDC, 32618)
@@ -22,7 +60,7 @@ roadsDC <- st_transform(roadsDC, 32618)
 street_lightsDC$geometry <- st_zm(street_lightsDC$geometry, what = "ZM", drop = TRUE)
 
 # Add buffer distance based on road type
-roadsDC <- roadsDC |> 
+roadsDC <- roadsDC |>
   mutate(buffer_distance = case_when(
     highway == 'motorway' ~ 30, # in meters
     highway == 'motorway_link' ~ 30,
@@ -35,30 +73,24 @@ roadsDC <- roadsDC |>
     highway == 'tertiary' ~ 13,
     highway == 'tertiary_link' ~ 13,
     highway == 'residential' ~ 10,
-    TRUE ~ 10  
+    highway == 'path' ~ 5,
+    TRUE ~ 5
   ))
+# Keep the original geometry for later use
+roadsDC_geom <- st_geometry(roadsDC)
 
 # Keep the original geometry for later use
 roadsDC_geom <- st_geometry(roadsDC)
 
 # Create buffered geometries
-roadsDC_buffered <- st_geometry(roadsDC) |> 
-  st_buffer(dist = roadsDC$buffer_distance)
+roadsDC <- roadsDC |> st_buffer(dist=roadsDC$buffer_distance)
 
-# Replace the geometry column
-st_geometry(roadsDC) <- roadsDC_buffered
 
 # Count the lights for each road segment
-roads_with_lights <- st_join(roadsDC, street_lightsDC, join = st_intersects)
+# TODO think this can be easier done with st_filter
 
-# Group by road and summarize
-roads_with_light_counts <- roads_with_lights |>
-  group_by(osm_id) |>
-  summarise(light_count = n()) |> 
-  st_drop_geometry()
-
-# Join back to the original roads dataset
-roadsDC <- left_join(roadsDC, roads_with_light_counts, by = "osm_id")
+roadsDC$light_count <- roadsDC |>
+  st_intersects(street_lightsDC) |> lengths()
 
 # Compute light count per area
 roadsDC <- roadsDC |>
@@ -66,18 +98,19 @@ roadsDC <- roadsDC |>
 
 # Compute z-scores based on road types
 roadsDC <- roadsDC |>
-  group_by(highway) |> 
+  group_by(highway) |>
   mutate(mean_value = mean(lights_per_area, na.rm = TRUE),
          sd_value = sd(lights_per_area, na.rm = TRUE),
          brightness_zscore = (lights_per_area - mean_value) / sd_value) |>
   ungroup()
 
+
 # Revert to original geometry
 st_geometry(roadsDC) <- roadsDC_geom
 
 # Create a temporary data frame with the same number of rows as roadsDC
-safety_df <- roadsDC |> 
-  select(osm_id) |> 
+safety_df <- roadsDC |>
+  select(osm_id) |>
   st_drop_geometry()
 
 # Generate random scores 1-10 for each column
@@ -93,7 +126,7 @@ row_means <- rowMeans(safety_df[, !names(safety_df) %in% "osm_id"], na.rm = TRUE
 roadsDC$mean_safetyscore <- row_means
 
 
-roadsDC <- roadsDC |> 
+roadsDC <- roadsDC |>
   select(osm_id, highway, mean_safetyscore, brightness_zscore)
 
 # Create the map
@@ -101,14 +134,14 @@ mapview(roadsDC, zcol = "mean_safetyscore")
 
 
 # Routing test and setting up graph
-roadsDC <- st_read("data/roadsDC.gpkg") 
+#roadsDC <- st_read("data/roadsDC.gpkg")
 
-roadsDC <- roadsDC |> 
-  select(-mean_safetyscore)
+# roadsDC <- roadsDC |>
+#   select(-mean_safetyscore)
 
 # Calculate edge lengths
-net <- as_sfnetwork(roadsDC, directed = FALSE) |> 
-  activate("edges") |> 
+net <- as_sfnetwork(roadsDC, directed = FALSE) |>
+  activate("edges") |>
   mutate(edge_len = edge_length())
 
 
@@ -142,13 +175,13 @@ node_ids <- shortest_path |>
 
 net_nodes <- net |>
   activate("edges") |>
-  st_as_sf() 
+  st_as_sf()
 
 path_coords <- net_nodes[node_ids[[1]], ]
 
-path_coords <- path_coords |> 
-  mutate(new_safetyscore = 7) |> 
-  select(new_safetyscore, osm_id) |> 
+path_coords <- path_coords |>
+  mutate(new_safetyscore = 7) |>
+  select(new_safetyscore, osm_id) |>
   st_drop_geometry()
 
 safety_df <- left_join(safety_df, path_coords, by = "osm_id")
@@ -197,5 +230,5 @@ plot(connected_net, cex = 1.1, lwd = 1.1, add = TRUE)
 # Transform net to WGS for easier handling in leaflet
 connected_net <- st_transform(connected_net, 4326)
 
-#saveRDS(connected_net, file = "data/DC_connected_net.rds")
-
+saveRDS(connected_net, file = "data/DC_connected_net.rds")
+st_write(roadsDC, "data/roadsDC.gpkg", append=F)
