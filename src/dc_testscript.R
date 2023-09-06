@@ -11,7 +11,7 @@ street_lightsDC <- st_read("data/Street_Lights.geojson")
 roadsDC <- st_read("data/district-of-columbia-roads.osm.pbf", layer = 'lines')
 
 #Filter road types
-roadsDC <- roadsDC %>%
+roadsDC <- roadsDC  |> 
   filter(highway %in% c("motorway", "motorway_link", "trunk_link", "trunk", "primary", "secondary", "tertiary", "residential", "primary_link", "secondary_link", "tertiary_link"))
 
 # Coordinate transformation
@@ -22,7 +22,7 @@ roadsDC <- st_transform(roadsDC, 32618)
 street_lightsDC$geometry <- st_zm(street_lightsDC$geometry, what = "ZM", drop = TRUE)
 
 # Add buffer distance based on road type
-roadsDC <- roadsDC %>% 
+roadsDC <- roadsDC |> 
   mutate(buffer_distance = case_when(
     highway == 'motorway' ~ 30, # in meters
     highway == 'motorway_link' ~ 30,
@@ -42,7 +42,7 @@ roadsDC <- roadsDC %>%
 roadsDC_geom <- st_geometry(roadsDC)
 
 # Create buffered geometries
-roadsDC_buffered <- st_geometry(roadsDC) %>% 
+roadsDC_buffered <- st_geometry(roadsDC) |> 
   st_buffer(dist = roadsDC$buffer_distance)
 
 # Replace the geometry column
@@ -52,24 +52,24 @@ st_geometry(roadsDC) <- roadsDC_buffered
 roads_with_lights <- st_join(roadsDC, street_lightsDC, join = st_intersects)
 
 # Group by road and summarize
-roads_with_light_counts <- roads_with_lights %>%
-  group_by(osm_id) %>%
-  summarise(light_count = n()) %>% 
+roads_with_light_counts <- roads_with_lights |>
+  group_by(osm_id) |>
+  summarise(light_count = n()) |> 
   st_drop_geometry()
 
 # Join back to the original roads dataset
 roadsDC <- left_join(roadsDC, roads_with_light_counts, by = "osm_id")
 
 # Compute light count per area
-roadsDC <- roadsDC %>%
+roadsDC <- roadsDC |>
   mutate(lights_per_area = light_count / as.numeric(st_area(geometry)))
 
 # Compute z-scores based on road types
-roadsDC <- roadsDC %>%
-  group_by(highway) %>% 
+roadsDC <- roadsDC |>
+  group_by(highway) |> 
   mutate(mean_value = mean(lights_per_area, na.rm = TRUE),
          sd_value = sd(lights_per_area, na.rm = TRUE),
-         brightness_zscore = (lights_per_area - mean_value) / sd_value) %>%
+         brightness_zscore = (lights_per_area - mean_value) / sd_value) |>
   ungroup()
 
 # Revert to original geometry
@@ -109,8 +109,8 @@ net <- as_sfnetwork(roadsDC, directed = FALSE) |>
   mutate(edge_len = edge_length())
 
 # Normalize weights from 0 to 1 so that they can be equally weighted
-net <- net %>%
-  activate("edges") %>%
+net <- net |>
+  activate("edges") |>
   mutate(
     norm_edge_len = as.numeric(normalize(edge_len)),
     norm_safety = normalize(mean_safetyscore),
@@ -118,8 +118,8 @@ net <- net %>%
   )
 
 # Create a composite weight
-net <- net %>%
-  activate("edges") %>%
+net <- net |>
+  activate("edges") |>
   mutate(
     composite_weight = norm_edge_len + norm_safety + norm_brightness
   )
@@ -129,23 +129,23 @@ shortest_path <- st_network_paths(net,  from = 221, to = 110, weights = "composi
 
 # Plot output
 plot_path = function(node_path) {
-  net %>%
-    activate("nodes") %>%
-    slice(node_path) %>%
+  net |>
+    activate("nodes") |>
+    slice(node_path) |>
     plot(cex = 1.5, lwd = 1.5, add = TRUE)
 }
 
 colors = sf.colors(2, categorical = TRUE)
 
 plot(net, col = "grey")
-shortest_path %>%
-  pull(node_paths) %>%
+shortest_path |>
+  pull(node_paths) |>
   walk(plot_path)
 
-net %>%
-  activate("nodes") %>%
-  st_as_sf() %>%
-  slice(c(221, 110)) %>%
+net |>
+  activate("nodes") |>
+  st_as_sf() |>
+  slice(c(221, 110)) |>
   plot(col = colors, pch = 8, cex = 2, lwd = 2, add = TRUE)
 
 
@@ -153,8 +153,8 @@ net %>%
 with_graph(net, graph_component_count())
 
 # Select the largest graph (9243 elements out fo 12696) - Not ideal but ok for now
-connected_net = net %>%
-  activate("nodes") %>%
+connected_net = net |>
+  activate("nodes") |>
   filter(group_components() == 1)
 
 plot(net, col = colors[2])

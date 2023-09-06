@@ -19,13 +19,13 @@ server <- function(input, output, session) {
   userPoints <- reactiveVal(data.frame(id = integer(0), lat = numeric(0), lng = numeric(0)))
   
   output$mymap <- renderLeaflet({
-    leaflet() %>%
-      addProviderTiles(providers$OpenStreetMap) %>%
+    leaflet() |>
+      addProviderTiles(providers$OpenStreetMap) |>
       setView(lng = -77.0369, lat = 38.9072, zoom = 12)
   })
   
   observeEvent(input$mymap_click, {
-    leafletProxy("mymap") %>% clearShapes()
+    leafletProxy("mymap") |> clearShapes()
     
     newPoint <- data.frame(id = nrow(userPoints()) + 1,
                            lat = input$mymap_click$lat,
@@ -37,8 +37,8 @@ server <- function(input, output, session) {
   })
   
   observe({
-    leafletProxy("mymap") %>%
-      clearMarkers() %>%
+    leafletProxy("mymap") |>
+      clearMarkers() |>
       addCircleMarkers(data = userPoints(), ~lng, ~lat, radius = 5, color = "red")
   })
   
@@ -70,12 +70,12 @@ server <- function(input, output, session) {
         userPoints(data.frame(id = integer(0), lat = numeric(0), lng = numeric(0)))  # Reset the points
       } else {
         # Extract the node paths from the shortest_path object
-        node_ids <- shortest_path %>%
+        node_ids <- shortest_path |>
           pull(node_paths)
         
         # Extract the corresponding lat/lng from the network object
-        net_nodes <- net %>%
-          activate("nodes") %>%
+        net_nodes <- net |>
+          activate("nodes") |>
           st_as_sf() 
         
         path_coords <- net_nodes[node_ids[[1]], ]
@@ -90,7 +90,7 @@ server <- function(input, output, session) {
         path_sf <- st_sf(geometry = st_sfc(path_linestring, crs = st_crs(path_coords)))
         
         # Now add this to the leaflet map
-        leafletProxy("mymap") %>%
+        leafletProxy("mymap") |>
           addPolylines(data = path_sf, color = "blue", weight = 3)
         
       }
