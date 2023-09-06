@@ -1,22 +1,25 @@
 
-#packages
+#packages ----------------
 library(httr)
 library (jsonlite)
 library(sf)
 library(mapview)
 library(dplyr)
 
-#Munich
+#Munich ----------------
+##API Request ------------------
 #send request to API
 res <- VERB("GET", url = "https://graph.mapillary.com/map_features?access_token=MLY|9986775024730224|7cba4c716e4096343f968f454f672949&fields=id,object_value,geometry&bbox=11.3607770000000006,48.0616243999999995,11.7229098999999994,48.2481161999999983&object_values=object--street-light")
 
 #convert to string
 json_string<- content(res, 'text')
 
+
+##Process Data -------------
 #convert string to data.frame
-df <- fromJSON(json_string)
+df_raw <- fromJSON(json_string)
 print(df)
-df <- data.frame(df)
+df <- data.frame(df_raw)
 
 #empty vectors for latitude and longitude
 lat <- c()
@@ -33,6 +36,9 @@ for (i in 1:nrow(df)){
 df$lon <- lon
 df$lat <- lat
 
+#select only necessary columns
+df <- df %>% select(data.id, data.object_value, lon, lat)
+
 #build geometry column 
 df <- st_as_sf(df, coords = c("lon", "lat"), crs = 4326)
 mapview(df)
@@ -40,7 +46,14 @@ mapview(df)
 
 #rename columns
 df <- df %>% 
-    select(data.id, data.object_value, geometry) %>% 
     rename(id = data.id,
            object_value = data.object_value)
-    
+
+
+## Clip Data to City Extent -------
+shp_munich <- st_read("data/Munich_boundary.gpkg")
+
+
+df_munich <- df %>% filter(st_intersects(geometry, shp_munich, sparse=F))
+
+mapview(df_munich)
