@@ -48,7 +48,7 @@ mapillary_object_parse <- function(json_string) {
     return(df)
   }
 
-bbox_to_objects <- function(bbox, api_access, fields) {
+bbox_to_objects <- function(bbox, api_access, object_values, fields) {
   # take a st_bbox output, request mapbox api, parse to df, deliver back df
   #send request to API
   coords <- bbox %>% as.numeric()
@@ -99,7 +99,7 @@ get_mapillary <- function(api_access, boundary, object_values, fields){
     #get coordinates of bboxes
     bbox <- boundary_grid_sf[i,] %>% st_bbox()
 
-    df <- bbox_to_objects(bbox, api_access, fields)
+    df <- bbox_to_objects(bbox, api_access, object_values, fields)
 
     if (df %>% is_empty()) {next} #check if df is empty or zero length
 
@@ -114,7 +114,7 @@ get_mapillary <- function(api_access, boundary, object_values, fields){
         tic(glue("sub grid yaw {j}/{nrow(sub_grid)}"))
         bbox <- sub_grid[j,] %>% st_bbox()
 
-        sub_df <- bbox_to_objects(bbox, api_access, fields)
+        sub_df <- bbox_to_objects(bbox, api_access, object_values, fields)
 
         if (j == 1) {
           result_sub_df <- sub_df

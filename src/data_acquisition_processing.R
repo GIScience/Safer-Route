@@ -49,12 +49,13 @@ get_roads <- function(name, boundary) {
 
 get_official_streetlights <- function(boundary){
   if (!file.exists("data/Street_Lights.geojson")) {
+    options(timeout=500)
     download.file(
       "https://opendata.arcgis.com/api/v3/datasets/6cb6520725b0489d9a209a337818fad1_90/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1",
       destfile = "data/Street_Lights.geojson",
       mode = "wb",
-      quiet = T,
-      timeout = 1000
+      method="libcurl",
+      #quiet = T,
     )
   }
   street_lights <- st_read("data/Street_Lights.geojson", quiet=T)
@@ -192,13 +193,10 @@ config <- fromJSON("config/config.json")
 munich_boundary <- get_boundary("München")
 dc_boundary <- get_boundary("Washington")
 
-plot(munich_boundary$geometry)
-plot(dc_boundary$geometry)
-
 munich_roads <- get_roads("oberbayern", munich_boundary)
 dc_roads <- get_roads("us/district-of-columbia", dc_boundary)
 
-munich_lights <- get_mapillary(config$mapillary_api_key, munich, "object--street-light", "id")
+munich_lights <- get_mapillary(config$mapillary_api_key, munich_boundary, "object--street-light", "id")
 # returns a list of the lights and the grid with counts
 dc_lights <- get_official_streetlights(dc_boundary)
 
