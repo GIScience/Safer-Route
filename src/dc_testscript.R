@@ -134,7 +134,7 @@ mapview(roadsDC, zcol = "mean_safetyscore")
 
 
 # Routing test and setting up graph
-#roadsDC <- st_read("data/roadsDC.gpkg")
+roadsDC <- st_read("data/roadsDC.gpkg")
 
 # roadsDC <- roadsDC |>
 #   select(-mean_safetyscore)
