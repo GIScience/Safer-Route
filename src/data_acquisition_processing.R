@@ -9,6 +9,8 @@ library(tidyverse)
 library(sf)
 library(osmdata)
 library(osmextract)
+library(sfnetworks)
+library(tidygraph)
 
 
 #2 Functions ---------------------------------
@@ -215,5 +217,5 @@ dc_roads <- st_transform(dc_roads, 4326)
 munich_net <- process_graph(munich_roads)
 dc_net <- process_graph(dc_roads)
 
-save(munich_net, munich_roads, file = "data/munich.Rdata")
-save(dc_net, dc_roads, file = "data/dc.Rdata")
+save(munich_net, munich_roads, file = "data/munich.RData")
+save(dc_net, dc_roads, file = "data/dc.RData")
