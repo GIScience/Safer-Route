@@ -99,7 +99,8 @@ server <- function(input, output, session) {
     if (nrow(userPoints()) >= 2) {
       # Remove the existing markers from the map
       leafletProxy("mymap") %>%
-        clearMarkers()
+        clearMarkers() %>%
+        removeShape(layerId = userPathID())
       
       # Reset the userPoints data frame and add the new point
       userPoints(newPoint)
