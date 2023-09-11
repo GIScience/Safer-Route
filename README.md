@@ -17,15 +17,15 @@ The core feature of Safer Route is its interactive map interface. Users can expl
 
 ### 2. Data Aggregation
 
-Safer Route aggregates data from various sources, including public lighting databases, crime statistics, and user-generated ratings. By combining these datasets, the app provides a holistic view of safety.
+Safer Route aggregates data from various sources, including public street light databases, opening hours for storefront businesses, and user-generated ratings. By combining these datasets, the app provides a holistic view of safety and nighttime activity in cities.
 
 ### 3. User Ratings and Reviews
 
-Users can contribute to the safety perception assessment by rating and reviewing specific road segments. This collaborative aspect allows individuals to share their experiences and insights, contributing to the overall safety evaluation.
+Users can contribute to the safety perception assessment by rating and reviewing routes. This collaborative aspect allows individuals to share their experiences and insights, contributing to the overall safety evaluation.
 
 ### 4. Route Recommendations
 
-Based on user preferences and safety concerns, Safer Route can suggest alternative routes that prioritize safety. This helps users make well-informed decisions when planning their journeys.
+Based on user preferences and safety concerns, Safer Route can suggest alternative routes that prioritize shortest distance, route safety ratings, or nighttime activity. This helps users make well-informed decisions when planning their journeys.
 
 ## How to set it up yourself
 
