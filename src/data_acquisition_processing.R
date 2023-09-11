@@ -208,11 +208,12 @@ munich_lights_grid <- munich_lights[[2]] # just for validating amount of lights 
 munich_roads <- link_roads_lights(munich_roads, munich_lights)
 dc_roads <- link_roads_lights(dc_roads, dc_lights)
 
+# transform back to WGS 84
+munich_roads <- st_transform(munich_roads, 4326)
+dc_roads <- st_transform(dc_roads, 4326)
+
 munich_net <- process_graph(munich_roads)
 dc_net <- process_graph(dc_roads)
-
-munich_net <- st_transform(munich_net, 4326)
-dc_net <- st_transform(dc_net, 4326)
 
 save(munich_net, munich_roads, file = "data/munich.Rdata")
 save(dc_net, dc_roads, file = "data/dc.Rdata")
