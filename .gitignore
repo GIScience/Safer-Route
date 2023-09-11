@@ -1,0 +1,6 @@
+data/
+config/config.json
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata

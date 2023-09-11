@@ -1,7 +1,7 @@
 
 #Packages ----------------
 library(httr)
-library (jsonlite)
+library(jsonlite)
 library(sf)
 library(mapview)
 library(dplyr)
@@ -48,7 +48,7 @@ mapillary_object_parse <- function(json_string) {
     return(df)
   }
 
-bbox_to_objects <- function(bbox) {
+bbox_to_objects <- function(bbox, api_access, object_values, fields) {
   # take a st_bbox output, request mapbox api, parse to df, deliver back df
   #send request to API
   coords <- bbox %>% as.numeric()
@@ -65,62 +65,47 @@ bbox_to_objects <- function(bbox) {
 }
 
 
+get_mapillary <- function(api_access, boundary, object_values, fields){
 
-
-#Grid Preparation ---------------
-#Get OSM Data
-munich <- opq("munich") %>% #search for munich
-  add_osm_feature (key = "admin_level", value = "6") %>%
-  add_osm_feature (key = "name", value = "München") %>%
-  osmdata_sf ()
-
-#extract polygon
-munich <- munich$osm_multipolygons
-
-#make grid
-munich_grid <- st_make_grid(
-    munich,
+  tic("Grid creation")
+  #Grid Preparation ---------------
+  #make grid
+  boundary_grid <- st_make_grid(
+    boundary,
     n = c(10, 10),
     square = TRUE
   )
 
-#convert to sf object
-munich_grid_sf <- st_as_sf(munich_grid)
+  #convert to sf object
+  boundary_grid_sf <- st_as_sf(boundary_grid)
+  toc()
+
+
+  #Mapillary Data--------------
+  #define fields
 
 
 
-#Mapillary Data--------------
+  #Get Mapillary Data
+  boundary_grid_sf$count <- NA
 
-#define access_code
-api_access <- "MLY|9986775024730224|7cba4c716e4096343f968f454f672949"
-
-#define objects
-object_values <- "object--street-light"
-
-#define fields
-fields <- "id"
+  tic("Extraction by grid done")
+  suppressWarnings(rm(result_df))
 
 
 
-#Get Mapillary Data
-munich_grid_sf$count <- NA
+  for (i in 1:nrow(boundary_grid_sf)){
+    tic(glue("{i}/{nrow(boundary_grid_sf)}"))
+    #get coordinates of bboxes
+    bbox <- boundary_grid_sf[i,] %>% st_bbox()
 
-#check if df exists already
-if (exists("result_df")) {
-  rm(result_df)
-}
-for (i in 1:nrow(munich_grid_sf)){
-  tic(glue("{i}/{nrow(munich_grid_sf)}"))
-  #get coordinates of bboxes
-  bbox <- munich_grid_sf[i,] %>% st_bbox()
+    df <- bbox_to_objects(bbox, api_access, object_values, fields)
 
-  df <- bbox_to_objects(bbox)
+    if (df %>% is_empty()) {next} #check if df is empty or zero length
 
-  if (df %>% is_empty()) {next} #check if df is empty or zero length
-
-  if (nrow(df)==2000) {
+    if (nrow(df)==2000) {
       sub_grid <- st_make_grid(
-        munich_grid_sf[i,],
+        boundary_grid_sf[i,],
         n = c(2, 2),
         square = TRUE
       )
@@ -129,7 +114,7 @@ for (i in 1:nrow(munich_grid_sf)){
         tic(glue("sub grid yaw {j}/{nrow(sub_grid)}"))
         bbox <- sub_grid[j,] %>% st_bbox()
 
-        sub_df <- bbox_to_objects(bbox)
+        sub_df <- bbox_to_objects(bbox, api_access, object_values, fields)
 
         if (j == 1) {
           result_sub_df <- sub_df
@@ -137,28 +122,33 @@ for (i in 1:nrow(munich_grid_sf)){
           result_sub_df <- rbind(result_sub_df, sub_df)}
         print(glue("count: {nrow(sub_df)}"))
         toc()
-        }
+      }
       df <- result_sub_df
 
     }
 
-  if (exists("result_df")) {
-    result_df <- rbind(result_df, df)
-  } else {
-    result_df <- df
+    if (exists("result_df")) {
+      result_df <- rbind(result_df, df)
+    } else {
+      result_df <- df
+    }
+
+    boundary_grid_sf[i,]$count <- nrow(df)
+
+    toc()
   }
-
-  munich_grid_sf[i,]$count <- nrow(df)
-
   toc()
+
+  tic("Processing of results done")
+  # Extract boundary of Grid
+  boundary_df <- result_df %>% filter(st_intersects(result_df, boundary, sparse=F))
+
+  #delete duplicates
+  unique_values <- !duplicated(boundary_df$id)
+  boundary_df <- subset(boundary_df, unique_values)
+  st_geometry(boundary_df) <- "geometry"
+  toc()
+  #safe data frame
+  return(list(boundary_df, boundary_grid_sf))
 }
 
-# Extract Munich of Grid
-munich_df <- result_df %>% filter(st_intersects(result_df, munich, sparse=F))
-
-#delete duplicates
-unique_values <- !duplicated(munich_df$id)
-munich_df <- subset(munich_df, unique_values)
-
-#safe data frame
-st_write(munich_df, "data/munich_lights.gpkg")
