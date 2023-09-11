@@ -217,5 +217,5 @@ dc_roads <- st_transform(dc_roads, 4326)
 munich_net <- process_graph(munich_roads)
 dc_net <- process_graph(dc_roads)
 
-save(munich_net, munich_roads, file = "data/munich.RData")
-save(dc_net, dc_roads, file = "data/dc.RData")
+save(munich_boundary, munich_net, munich_roads, file = "data/munich.RData")
+save(dc_boundary, dc_net, dc_roads, file = "data/dc.RData")
