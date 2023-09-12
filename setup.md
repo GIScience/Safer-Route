@@ -33,7 +33,7 @@ Create directories to be mounted by the docker container
 **Folders**
 
 ```sh
-mkdir -p shiny_logs shiny_apps/dc
+mkdir -p shiny_logs shiny_apps/data
 ```
 
 * `shiny_logs` store the logs of our shiny application
@@ -55,20 +55,44 @@ All of this happens in the [Dockerfile](Dockerfile).
 RUID="$(id -u)" docker-compose up
 ``` 
 
-Move the shiny application and the data to the volume to be served.
+Copy the shiny application and the data to the volume to be served.
+
+Copy the App components
+```sh
+cp -r src/app shiny_apps/.
+cp  src/app.R shiny_apps/.
+
+```
+
+Copy the .RData files
+
+```
+cp  data/.*RData shiny_apps/data/.
+```
+
+Your shiny_apps folder should look like this:
 
 ```sh
-cp src/app.R shiny_apps/dc/app.R
-```
+$ tree shiny_apps/
+shiny_apps/
+├── app
+│   ├── server.R
+│   └── ui.R
+├── app.R
+└── data
+    ├── dc.RData
+    ├── ma.RData
+    └── munich.RData
+
+2 directories, 6 files
 
 ```
-cp data shiny_apps/dc
-```
+
 
 The shiny server runs at port 3838. See the shiny application here:
 
 
-http://localhost:3838/dc_test/
+http://localhost:3838
 
 
 
