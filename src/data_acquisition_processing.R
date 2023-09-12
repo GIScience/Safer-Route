@@ -11,7 +11,7 @@ library(osmdata)
 library(osmextract)
 library(sfnetworks)
 library(tidygraph)
-
+library(scales)
 
 #2 Functions ---------------------------------
 
@@ -38,7 +38,7 @@ get_roads <- function(name, boundary) {
     query = "SELECT *
   FROM 'lines'
   WHERE highway in
-  ('footway', 'path', 'motorway', 'motorway_link', 'trunk_link', 'trunk', 'primary', 'secondary', 'tertiary', 'residential', 'primary_link', 'secondary_link', 'tertiary_link')",
+  ('motorway', 'motorway_link', 'trunk_link', 'trunk', 'primary', 'secondary', 'tertiary', 'residential', 'primary_link', 'secondary_link', 'tertiary_link', 'living_street', 'unclassified')",
   download_directory = "data"
   )
 
@@ -69,8 +69,7 @@ get_official_streetlights <- function(boundary){
 
 link_roads_lights <- function(roads, street_lights) {
   # Coordinate transformation
-  street_lights <- st_transform(street_lights, 32618)
-  roads <- st_transform(roads, 32618)
+
 
   # Add buffer distance based on road type
   roads <- roads |>
@@ -88,7 +87,8 @@ link_roads_lights <- function(roads, street_lights) {
         highway == 'tertiary' ~ 13,
         highway == 'tertiary_link' ~ 13,
         highway == 'residential' ~ 10,
-        highway == 'path' ~ 5,
+        highway == 'living_street' ~ 10,
+        highway == 'unclassified' ~ 10,
         TRUE ~ 5
       )
     )
@@ -115,7 +115,8 @@ link_roads_lights <- function(roads, street_lights) {
       sd_value = sd(lights_per_area, na.rm = TRUE),
       brightness_zscore = (lights_per_area - mean_value) / sd_value
     ) |>
-    ungroup()
+    ungroup() |> 
+    mutate(brightness_zscore_rescale = scales::rescale(brightness_zscore, to=c(1,10)))
 
   st_geometry(roads) <- roads_geom
 
@@ -141,9 +142,7 @@ process_graph <- function(roads){
   roads <- roads |>
     select(osm_id, highway, mean_safetyscore, brightness_zscore)
 
-  # Create the map
-  mapview(roads, zcol = "mean_safetyscore")
-
+  
 
   # Routing test and setting up graph
 
@@ -194,28 +193,58 @@ config <- fromJSON("config/config.json")
 
 munich_boundary <- get_boundary("München")
 dc_boundary <- get_boundary("Washington")
+ma_boundary <- get_boundary("Mannheim")
+
 
 munich_roads <- get_roads("oberbayern", munich_boundary)
 dc_roads <- get_roads("us/district-of-columbia", dc_boundary)
+ma_roads <- get_roads("regierungsbezierk karlsruhe", ma_boundary)
 
 munich_lights <- get_mapillary(config$mapillary_api_key, munich_boundary, "object--street-light", "id")
 # returns a list of the lights and the grid with counts
 dc_lights <- get_official_streetlights(dc_boundary)
+ma_lights <- get_mapillary(config$mapillary_api_key, ma_boundary, "object--street-light", "id")
 
-munich_lights <- munich_lights[[1]]
 munich_lights_grid <- munich_lights[[2]] # just for validating amount of lights per cell
+munich_lights <- munich_lights[[1]]
+
+ma_lights_grid <- ma_lights[[2]]
+ma_lights <- ma_lights[[1]]
 
 #3 run processing ---------------------------------
 
+ma_roads <- st_transform(ma_roads, 25832)
+dc_roads <- st_transform(dc_roads, 32618)
+munich_roads <- st_transform(munich_roads, 25832)
+
+ma_lights <- st_transform(ma_lights, 25832)
+dc_lights <- st_transform(dc_lights, 32618)
+munich_lights <- st_transform(munich_lights, 25832)
+
 munich_roads <- link_roads_lights(munich_roads, munich_lights)
 dc_roads <- link_roads_lights(dc_roads, dc_lights)
+ma_roads <- link_roads_lights(ma_roads, ma_lights)
 
 # transform back to WGS 84
 munich_roads <- st_transform(munich_roads, 4326)
 dc_roads <- st_transform(dc_roads, 4326)
+ma_roads <- st_transform(ma_roads, 4326)
 
 munich_net <- process_graph(munich_roads)
 dc_net <- process_graph(dc_roads)
+ma_net <- process_graph(ma_roads)
 
-save(munich_boundary, munich_net, munich_roads, file = "data/munich.RData")
-save(dc_boundary, dc_net, dc_roads, file = "data/dc.RData")
+boundary <- munich_boundary
+net <- munich_net
+roads <- munich_roads
+save(boundary, net, roads, file = "data/munich.RData")
+
+boundary <- dc_boundary
+net <- dc_net
+roads <- dc_roads
+save(boundary, net, roads, file = "data/dc.RData")
+
+boundary <- ma_boundary
+net <- ma_net
+roads <- ma_roads
+save(boundary, net, roads, file = "data/ma.RData")
