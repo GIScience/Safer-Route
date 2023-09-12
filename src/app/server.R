@@ -17,7 +17,7 @@ server <- function(input, output, session) {
   # Initial map rendering
   output$mymap <- renderLeaflet({
     leaflet(data = st_transform(roads, crs = 4326)) %>%
-      addProviderTiles(providers$OpenStreetMap) %>%
+      addProviderTiles(providers$CartoDB.Positron) %>%
       #setView(lng = -77.0369, lat = 38.9072, zoom = 12) %>%
       fitBounds(bbox[1], bbox[2], bbox[3], bbox[4]) %>%
       addPolylines(

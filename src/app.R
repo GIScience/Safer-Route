@@ -12,7 +12,7 @@ library(shinythemes)
 tryCatch({
   #net <- readRDS("../data/DC_connected_net.rds")
   #roads <- st_read("../data/roads.gpkg") 
-  load("data/munich.RData")
+  load("data/ma.RData")
   
   safety_df <- roads |> 
     select(osm_id) |> 
