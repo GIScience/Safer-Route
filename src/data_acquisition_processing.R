@@ -211,6 +211,11 @@ munich_lights <- munich_lights[[1]]
 ma_lights_grid <- ma_lights[[2]]
 ma_lights <- ma_lights[[1]]
 
+# check that no grid has exaclty 2000 lights (maximum of the api)
+ma_lights_grid$count |> max(na.rm=T)
+munich_lights_grid$count |> max(na.rm=T)
+
+
 #3 run processing ---------------------------------
 
 ma_roads <- st_transform(ma_roads, 25832)
