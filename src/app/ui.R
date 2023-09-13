@@ -1,9 +1,9 @@
 ui <- fluidPage(
   theme = shinytheme("paper"),
-  navbarPage(
+  navbarPage( 
     "Safer-Route",
     # Title
-    tabPanel(# this is page one in the nav
+    tabPanel(width=10,# this is page one in the nav
       "Start", # Heading of the page
       sidebarLayout(sidebarPanel(
         h3("Introduction",
@@ -23,9 +23,14 @@ ui <- fluidPage(
           ),
           actionButton("show_modal_btn", "Rate Safety of Route"),
           checkboxInput("use_st_blend", "Route through open spaces", FALSE),
-        ),
+        
+          selectInput("variable", "Route preference:",
+                      c("Safest Route" = "safe",
+                        "Most illuminated Route" = "lit",
+                        "Fastest Route" = "fast")
+                      )
+          ),
         mainPanel(
-          
           tags$style(type = "text/css", "#mymap {height: calc(100vh - 180px) !important;}"),
           leafletOutput("mymap"),
           verbatimTextOutput("debug")
@@ -43,9 +48,8 @@ ui <- fluidPage(
           actionButton("show_modal_btn", "Rate Safety of Route"),
           checkboxInput("use_st_blend", "Route through open spaces", FALSE),
         ),
-        mainPanel(h4(
-          "DC map"
-        )))),
+        mainPanel(h4("DC map"))
+      )),
     tabPanel(# this is page two in the nav
       "Munich",
       sidebarLayout(sidebarPanel(
