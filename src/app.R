@@ -6,6 +6,7 @@ library(sf)
 library(tidygraph)
 library(shinyjs)
 library(shinythemes)
+library(viridisLite)
 
 
 # Read preprocessed network (make sure this file exists in your working directory)
@@ -33,8 +34,10 @@ row_means <- rowMeans(safety_df[, !names(safety_df) %in% "osm_id"], na.rm = TRUE
 
 roads$mean_safetyscore <- row_means
 
-pal <- colorNumeric(palette = "viridis", domain = roads$mean_safetyscore)
-pal1 <- colorNumeric(palette = "viridis", domain = roads$brightness_zscore)
+
+
+pal <- colorNumeric(palette = viridisLite::mako(9), domain = roads$mean_safetyscore)
+pal1 <- colorNumeric(palette = viridisLite::cividis(9), domain = roads$brightness_zscore_rescale)
 
 
 # Normalize weights from 0 to 1 so that they can be equally weighted
