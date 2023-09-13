@@ -12,14 +12,16 @@ server <- function(input, output, session) {
   safetyRating <- reactiveVal(NULL)
   userPathID <- reactiveVal(NULL)
   
-  bbox <- st_bbox(boundary) |>  as.numeric()
-  
+  bbox <- boundary |> st_bbox() |>  as.numeric()
+  bbox_max <- boundary |> st_buffer(1) |> st_bbox() |> as.numeric()
+
   # Initial map rendering
   output$mymap <- renderLeaflet({
     leaflet(data = st_transform(roads, crs = 4326)) %>%
       addProviderTiles(providers$CartoDB.Positron) %>%
       #setView(lng = -77.0369, lat = 38.9072, zoom = 12) %>%
       fitBounds(bbox[1], bbox[2], bbox[3], bbox[4]) %>%
+      setMaxBounds(bbox_max[1], bbox_max[2], bbox_max[3], bbox_max[4]) %>%
       addPolylines(
         color = ~ pal(mean_safetyscore),
         weight = 2,
