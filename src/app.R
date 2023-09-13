@@ -36,8 +36,8 @@ roads$mean_safetyscore <- row_means
 
 
 
-pal <- colorNumeric(palette = viridisLite::mako(9), domain = roads$mean_safetyscore)
-pal1 <- colorNumeric(palette = viridisLite::cividis(9), domain = roads$brightness_zscore_rescale)
+pal <- colorNumeric(palette = viridisLite::mako(9), domain = 1:10)
+pal1 <- colorNumeric(palette = viridisLite::cividis(9), domain = 1:10)
 
 
 # Normalize weights from 0 to 1 so that they can be equally weighted

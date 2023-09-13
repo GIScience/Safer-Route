@@ -39,13 +39,13 @@ server <- function(input, output, session) {
       hideGroup(c("Safety Score", "Brightness Score")) %>%
       addLegend(
         pal = pal,
-        values = ~ mean_safetyscore,
+        values = 1:10,
         title = "Safety Score",
         position = "bottomright"
       ) %>%
       addLegend(
         pal = pal1,
-        values = ~ brightness_zscore_rescale,
+        values = ~ 1:10,
         title = "Brightness Score",
         position = "bottomleft"
       )
