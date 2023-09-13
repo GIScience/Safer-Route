@@ -4,9 +4,9 @@ This doc guides you through the setup of the Safer Route application.
 
 ## Mapillary API
 
-Get your API key here:
+Get your API key here: [https://www.mapillary.com/developer/api-documentation?locale=de_DE](https://www.mapillary.com/developer/api-documentation?locale=de_DE)
 
-put it into `config/config.json`:
+put it into a `config/config.json` file:
 
 ```json
 {
@@ -23,6 +23,7 @@ The processed data is ready to be consumed by the shiny app:
 
 * munich.Rdata
 * dc.Rdata
+* ma.Rdata
 
 
 
@@ -67,7 +68,7 @@ cp  src/app.R shiny_apps/.
 Copy the .RData files
 
 ```
-cp  data/.*RData shiny_apps/data/.
+cp  data/*.RData shiny_apps/data/.
 ```
 
 Your shiny_apps folder should look like this:
