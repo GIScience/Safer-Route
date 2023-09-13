@@ -1,7 +1,7 @@
 FROM rocker/geospatial:ubuntugis
 
 # install additional libs
-RUN install2.r tidygraph sfnetworks leaflet osmextract osmdata tictoc shinythemes
+RUN install2.r tidygraph sfnetworks leaflet osmextract osmdata tictoc shinythemes shinyjs
 
 ENV S6_VERSION=v2.1.0.2
 ENV SHINY_SERVER_VERSION=latest
