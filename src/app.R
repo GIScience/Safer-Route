@@ -79,7 +79,6 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
   # Initialize reactive values for user-defined points
   userPoints <-
     reactiveVal(data.frame(
-      id = integer(0),
       lat = numeric(0),
       lng = numeric(0)
     ))
@@ -95,7 +94,6 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
   # Listening for map click events
   observeEvent(input$mymap_click, {
     newPoint <- data.frame(
-      id = nrow(userPoints()) + 1,
       lat = input$mymap_click$lat,
       lng = input$mymap_click$lng
     )
