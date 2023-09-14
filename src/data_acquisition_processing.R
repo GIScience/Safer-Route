@@ -38,7 +38,7 @@ get_roads <- function(name, boundary) {
     query = "SELECT *
   FROM 'lines'
   WHERE highway in
-  ('motorway', 'motorway_link', 'trunk_link', 'trunk', 'primary', 'secondary', 'tertiary', 'residential', 'primary_link', 'secondary_link', 'tertiary_link', 'living_street', 'unclassified')",
+  ('motorway', 'motorway_link', 'trunk_link', 'trunk', 'primary', 'secondary', 'tertiary', 'residential', 'primary_link', 'secondary_link', 'tertiary_link', 'living_street', 'unclassified', 'footway', 'path')",
   download_directory = "data"
   )
 
@@ -89,6 +89,8 @@ link_roads_lights <- function(roads, street_lights) {
         highway == 'residential' ~ 10,
         highway == 'living_street' ~ 10,
         highway == 'unclassified' ~ 10,
+        highway == 'footway' ~ 10,
+        highway == 'path' ~ 10,
         TRUE ~ 5
       )
     )
@@ -213,6 +215,8 @@ ma_boundary <- get_boundary("Mannheim")
 munich_roads <- get_roads("oberbayern", munich_boundary)
 dc_roads <- get_roads("us/district-of-columbia", dc_boundary)
 ma_roads <- get_roads("regierungsbezierk karlsruhe", ma_boundary)
+mapview::mapview(ma_roads)
+
 
 munich_lights <- get_mapillary(config$mapillary_api_key, munich_boundary, "object--street-light", "id")
 # returns a list of the lights and the grid with counts
