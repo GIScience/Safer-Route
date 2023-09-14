@@ -320,22 +320,146 @@ ui <- fluidPage(
     ),
     tabPanel(# this is page two in the nav
       "Method",
-      sidebarLayout(sidebarPanel(
-        h3("Our method",
-           style = "padding-bottom: 20px")
+      sidebarLayout(sidebarPanel(h2("Method"),
+                                 tags$img(src = 'city_flow.png', height="200px"),
+                                 style = "padding-bottom: 20px"
       ),
-      mainPanel(h4(
-        " Some text"
-      )))),
-    tabPanel(# this is page three in the nav
+                    mainPanel(h4(
+                      tags$div(
+                        id = "method",
+                        
+                        
+                        # Datasets Used
+                        tags$h3("Datasets Used"),
+                        tags$ul(
+                          tags$li(
+                            "We utilized three main datasets in the development of Safer-Route:",
+                            tags$ul(
+                              tags$li("Road segments"),
+                              tags$li("Street Lights"),
+                              tags$li("Network Graph (derived from roads)")
+                            )
+                          )
+                        ),
+                        
+                        # Data Sources and Extraction
+                        tags$h3("Data Sources and Extraction"),
+                        tags$ul(
+                          tags$li("Roads:",
+                                  tags$ul(
+                                    tags$li("Source: OpenStreetMap"),
+                                    tags$li("Cities Covered: Munich, Washington DC, Mannheim"),
+                                    tags$li("Extraction Method: R libraries utilizing geofabrik data.")
+                                  )),
+                          tags$li("Street Lights:",
+                                  tags$ul(
+                                    tags$li(
+                                      "Sources: Mapillary, OpenStreetMap (Munich and Mannheim), Official Data (Washington DC)"
+                                    ),
+                                    tags$li(
+                                      "Extraction Method: Mapillary and OpenStreetMap for Munich and Mannheim; Official data for Washington DC via the cities open data portal."
+                                    )
+                                  ))
+                        ),
+                        
+                        # Data Fusion and Transformation
+                        tags$h3("Data Fusion and Transformation"),
+                        tags$p(
+                          "The street lights data was fused with the road dataset and subsequently transformed into a network graph. This step is crucial in incorporating illuminance information into the routing algorithm."
+                        ),
+                        
+                        # Application Functionality
+                        tags$h3("Application Functionality"),
+                        tags$p(
+                          "Within our application, the primary dataset employed is the network graph. Users can interact with this dataset through the user-friendly frontend interface to generate routes. They have the option to choose from three types of routes:"
+                        ),
+                        tags$ol(
+                          tags$li("Fastest: Emphasizes road segment lengths exclusively."),
+                          tags$li(
+                            "Brightness: Considers the level of illumination along road segments."
+                          ),
+                          tags$li(
+                            "Safest: A combination of segment length, brightness, and routes rated by users."
+                          )
+                        ),
+                        
+                        # User Ratings System
+                        tags$h3("User Ratings System"),
+                        tags$p(
+                          "Users play an active role in enhancing route safety. After creating routes, they have the opportunity to rate them based on their experience. Other users benefit from this valuable information, making the application a dynamic and collaborative platform for urban navigation."
+                        )
+                      )
+                      
+                      
+                    )))),
+    tabPanel(
+      # this is page three in the nav
       "Team",
-      sidebarLayout(sidebarPanel(
-        h3("Who are we",
-           style = "padding-bottom: 20px")
-      ),
-      mainPanel(h4(
-        " Some text"
-      ))))
+      sidebarLayout(
+        sidebarPanel(
+          h3("Team"),
+          p(
+            "We are a group of student research assistants and PhD students at the Heidelberg Institute for Geoinformation Technology (HeiGIT)",
+            style="font-size:22px"
+          ),
+          tags$a(
+            href = 'https://www.heigit.org',
+            tags$img(src = 'small_heigit_logo.png', height="100px"),
+            style = "padding-bottom: 20px"
+          )
+        ),
+      
+      mainPanel(
+        fluidRow(column(width = 5,style="margin-top:18px",
+                        tags$p("Maximiliane, a dedicated Geography student and research assistant at heigit, recently completed her Bachelor's degree with a thesis focusing on accessibility analysis for maternal health in Bali. Her invaluable contribution involved working on mapillary data acquisition and integration, enriching our project with her expertise in accessibility and spatial analysis.",
+                               style="font-size:18px")),
+                 column(
+                   width = 3,
+                   offset = 1,
+                   tags$img(
+                     src = 'kitzinger_cut_alpha.png',
+                     height = 300,
+                     style = ""
+                   ),
+                 )),
+        fluidRow(column(
+          width = 3,
+          offset = 1,
+          tags$img(
+            src = 'boehmer_cut_alpha.png',
+            height = 300,
+            style = ""
+          ),),
+                 column(width = 5,style="margin-top:18px",
+                        tags$p("Valentin, a devoted Geography student with a fervor for cycling, plays a pivotal role as a student research assistant at heigit. His efforts are focused on supporting the geoinformation for humanitarian aid groups in projects related to forecast-based financing in Somalia and Sudan. Valentin excels in data transformation and modeling, ensuring our application can effectively serve its purpose.",
+                               style="font-size:18px"))),
+        fluidRow(column(width = 5,style="margin-top:18px", 
+                        tags$p("Charles is a PhD student specializing in emerging vector-borne diseases in Europe, leveraging his background in Urban Planning and a prestigious MSc Degree from Harvard. Within our project, he takes charge of the backend development of the R shiny app, ensuring robust functionality and seamless user experience.",
+                               style="font-size:18px")),
+                 column(
+                   width = 3,
+                   offset = 1,
+                   tags$img(
+                     src = 'hatfield_cut_alpha.png',
+                     height = 300,
+                     style = ""
+                   ),)),
+        fluidRow(column(
+          width = 3,
+          offset = 1,
+          tags$img(
+            src = 'reinmuth_cut_alpha.png',
+            height = 300,
+            style = ""
+          ),),
+                 column(width = 5,style="margin-top:18px",
+                        tags$p("Marcel, a dedicated Research Associate at HeiGIt and a natural-born Geographer, took on the role of project coordinator and led the engineering efforts on the frontend. His expertise has been pivotal in shaping the project's direction and ensuring a user-friendly interface that aligns seamlessly with our vision for safe urban routing.",
+                               style="font-size:18px")))
+        
+        
+        
+      )))
+    
   )
 )
 
