@@ -13,28 +13,12 @@ library(viridisLite)
 tryCatch({
   #net <- readRDS("../data/DC_connected_net.rds")
   #roads <- st_read("../data/roads.gpkg") 
-  load("../data/ma.RData")
-  
-  safety_df <- roads |> 
-    select(osm_id) |> 
-    st_drop_geometry()
-  
-  
+  #load("../data/ma.RData")
+  load("../data/data.RData")
   
 }, error = function(e) {
   stop("Failed to read preprocessed network. Make sure the file exists.")
 })
-
-for (i in 1:10) {
-  new_column_name <- paste("safetyscore", i, sep = "")
-  safety_df[, new_column_name] <- sample(1:10, size = nrow(roads), replace = TRUE)
-}
-
-row_means <- rowMeans(safety_df[, !names(safety_df) %in% "osm_id"], na.rm = TRUE)
-
-roads$mean_safetyscore <- row_means
-
-
 
 pal <- colorNumeric(palette = viridisLite::mako(9), domain = 1:10)
 pal1 <- colorNumeric(palette = viridisLite::cividis(9), domain = 1:10)
@@ -45,110 +29,14 @@ normalize <- function(x) {
   return ((x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
 }
 
-ui <- fluidPage(
-  theme = shinytheme("paper"),
-  navbarPage( 
-    "Safer-Route",
-    # Title
-    tabPanel(width=10,# this is page one in the nav
-             "Start", # Heading of the page
-             sidebarLayout(sidebarPanel(
-               h3("Introduction",
-                  style = "padding-bottom: 20px")
-             ),
-             mainPanel(h4(
-               " Some text"
-             )))),
-    tabPanel(# this is page two in the nav
-      "Mannheim",
-      sidebarLayout(
-        sidebarPanel(
-          h3("Text and controls for DC",
-             style = "padding-bottom: 20px"),
-          tags$p(
-            "Begin routing by clicking where you are on the map and then clicking again for your destination. After your route is generated, you can press the 'Rate Safety of Route' button to rate your route on a scale of 1-10. Keep clicking to generate a new route!"
-          ),
-          actionButton("show_modal_btn", "Rate Safety of Route"),
-          checkboxInput("use_st_blend", "Route through open spaces", FALSE),
-          
-          selectInput("route_pref", "Route preference:",
-                      c("Safest Route" = "safe",
-                        "Most illuminated Route" = "lit",
-                        "Fastest Route" = "fast")
-          )
-        ),
-        mainPanel(
-          tags$style(type = "text/css", "#mymap {height: calc(100vh - 180px) !important;}"),
-          leafletOutput("mymap"),
-          verbatimTextOutput("debug")
-        )
-      )),
-    tabPanel(# this is page two in the nav
-      "Washington D.C",
-      sidebarLayout(
-        sidebarPanel(
-          h3("Text and controls for DC",
-             style = "padding-bottom: 20px"),
-          tags$p(
-            "Begin routing by clicking where you are on the map and then clicking again for your destination. After your route is generated, you can press the 'Rate Safety of Route' button to rate your route on a scale of 1-10. Keep clicking to generate a new route!"
-          ),
-          actionButton("show_modal_btn", "Rate Safety of Route"),
-          checkboxInput("use_st_blend", "Route through open spaces", FALSE),
-        ),
-        mainPanel(h4("DC map"))
-      )),
-    tabPanel(# this is page two in the nav
-      "Munich",
-      sidebarLayout(sidebarPanel(
-        h3("Text and controls for Munich",
-           style = "padding-bottom: 20px")
-      ),
-      mainPanel(h4(
-        "Munich map"
-      )))),
-    tabPanel(# this is page two in the nav
-      "Method",
-      sidebarLayout(sidebarPanel(
-        h3("Our method",
-           style = "padding-bottom: 20px")
-      ),
-      mainPanel(h4(
-        " Some text"
-      )))),
-    tabPanel(# this is page three in the nav
-      "Team",
-      sidebarLayout(sidebarPanel(
-        h3("Who are we",
-           style = "padding-bottom: 20px")
-      ),
-      mainPanel(h4(
-        " Some text"
-      ))))
-  )
-)
-
-
-server <- function(input, output, session) {
+create_map <- function(map_data, map_boundary) {
   
-  shinyjs::disable("show_modal_btn")
+  bbox <- map_boundary |> st_bbox() |>  as.numeric()
+  bbox_max <- map_boundary |> st_buffer(1) |> st_bbox() |> as.numeric()
   
-  # Initialize reactive values for user-defined points
-  userPoints <-
-    reactiveVal(data.frame(
-      id = integer(0),
-      lat = numeric(0),
-      lng = numeric(0)
-    ))
-  node_ids <- reactiveVal(NULL)
-  safetyRating <- reactiveVal(NULL)
-  userPathID <- reactiveVal(NULL)
   
-  bbox <- boundary |> st_bbox() |>  as.numeric()
-  bbox_max <- boundary |> st_buffer(1) |> st_bbox() |> as.numeric()
-  
-  # Initial map rendering
-  output$mymap <- renderLeaflet({
-    leaflet(data = st_transform(roads, crs = 4326)) %>%
+  lmap <- renderLeaflet({
+    leaflet(data = map_data) %>%
       addProviderTiles(providers$CartoDB.Positron) %>%
       #setView(lng = -77.0369, lat = 38.9072, zoom = 12) %>%
       fitBounds(bbox[1], bbox[2], bbox[3], bbox[4]) %>%
@@ -181,6 +69,28 @@ server <- function(input, output, session) {
         position = "bottomleft"
       )
   })
+  return(lmap)
+  
+}
+
+interactive_map <- function(input, output, map_boundary, map_net, map_roads){
+  
+  
+  # Initialize reactive values for user-defined points
+  userPoints <-
+    reactiveVal(data.frame(
+      id = integer(0),
+      lat = numeric(0),
+      lng = numeric(0)
+    ))
+  node_ids <- reactiveVal(NULL)
+  safetyRating <- reactiveVal(NULL)
+  userPathID <- reactiveVal(NULL)
+  
+  
+  # Initial map rendering
+  output$mymap <- create_map(map_roads, map_boundary)
+  
   
   # Listening for map click events
   observeEvent(input$mymap_click, {
@@ -214,8 +124,9 @@ server <- function(input, output, session) {
     safetyRating(input$safety_rating)
     removeModal()
     
+    print(map_roads)
     
-    net_edges <- net |>
+    net_edges <- map_roads |>
       activate("edges") |>
       st_as_sf()
     
@@ -231,20 +142,20 @@ server <- function(input, output, session) {
     row_means <-
       rowMeans(safety_df[, !names(safety_df) %in% "osm_id"], na.rm = TRUE)
     
-    roads$mean_safetyscore <- row_means
+    map_roads$mean_safetyscore <- row_means
     
-    net <- as_sfnetwork(roads, directed = FALSE) |>
+    map_roads <- as_sfnetwork(map_roads, directed = FALSE) |>
       activate("edges") |>
       mutate(edge_len = edge_length())
     
-    net_df <- net %>%
+    net_df <- map_roads %>%
       activate("edges") %>%
       as_tibble()
     
     # Print the mean of the 'mean_safetyscore' column
     print(mean(net_df$mean_safetyscore, na.rm = TRUE))
     
-    net <- net |>
+    map_roads <- map_roads |>
       activate("edges") |>
       mutate(
         norm_edge_len = as.numeric(normalize(edge_len)),
@@ -252,7 +163,7 @@ server <- function(input, output, session) {
         norm_safety = normalize(mean_safetyscore)
       )
     
-    net <- net |>
+    map_roads <- map_roads |>
       activate("edges") |>
       mutate(composite_weight = norm_edge_len + norm_safety + norm_brightness)
     
@@ -297,12 +208,12 @@ server <- function(input, output, session) {
       # Convert the dataframe into an sf object
       points_sf <-
         st_as_sf(points_df, coords = c("X", "Y"), crs = 4326)
-      
-      net <- st_network_blend(net, points_sf)
+      print(map_net)
+      map_roads <- st_network_blend(map_net, points_sf)
       
       # Get the nearest features
-      from_node <- st_nearest_feature(points_sf[1, ], net)
-      to_node <- st_nearest_feature(points_sf[2, ], net)
+      from_node <- st_nearest_feature(points_sf[1, ], map_roads)
+      to_node <- st_nearest_feature(points_sf[2, ], map_roads)
       print(input$route_pref)
       
       route_weight <- switch(
@@ -313,7 +224,7 @@ server <- function(input, output, session) {
       )
       
       shortest_path <- tryCatch({
-        st_network_paths(net,
+        st_network_paths(map_roads,
                          from = from_node,
                          to = to_node,
                          weights = route_weight)
@@ -333,7 +244,7 @@ server <- function(input, output, session) {
         node_ids(shortest_path |> pull(node_paths))
         
         # Extract the corresponding lat/lng from the network object
-        net_nodes <- net %>%
+        net_nodes <- map_roads %>%
           activate("nodes") %>%
           st_as_sf()
         
@@ -374,6 +285,124 @@ server <- function(input, output, session) {
       
     }
   })
+  return(output)
 }
 
-shinyApp(ui=ui,server=server)
+ui <- fluidPage(
+  theme = shinytheme("paper"),
+  navbarPage( 
+    "Safer-Route",
+    tabPanel(width=10,# this is page one in the nav
+             "Home", # Heading of the page
+             sidebarLayout(
+               sidebarPanel(
+                 h3("Text and controls",
+                    style = "padding-bottom: 20px"),
+                 tags$p(
+                   "Begin routing by clicking where you are on the map and then clicking again for your destination. After your route is generated, you can press the 'Rate Safety of Route' button to rate your route on a scale of 1-10. Keep clicking to generate a new route!"
+                 ),
+                 h5("Route Options"),
+                 #add button to jump to different location
+                 checkboxInput("use_st_blend", "Route through open spaces", FALSE),
+                 selectInput("route_pref", "Route preference:",
+                             c("Safest Route" = "safe",
+                               "Most illuminated Route" = "lit",
+                               "Fastest Route" = "fast")
+                 ),fluidRow(
+                   h4("Locations"),
+                   actionButton("location_ma", "Mannheim"),
+                   actionButton("location_dc", "Washington D.C."),
+                   actionButton("location_munich", "Munich")
+                            ),
+                 h5("Rate safety"),
+                 actionButton("show_modal_btn", "Rate Safety of Route")
+               ),
+               mainPanel(
+                 tags$style(type = "text/css", "#mymap {height: calc(100vh - 180px) !important;}"),
+                 leafletOutput("mymap"),
+                 verbatimTextOutput("debug")
+               ))
+             
+    ),
+    tabPanel(# this is page two in the nav
+      "Method",
+      sidebarLayout(sidebarPanel(
+        h3("Our method",
+           style = "padding-bottom: 20px")
+      ),
+      mainPanel(h4(
+        " Some text"
+      )))),
+    tabPanel(# this is page three in the nav
+      "Team",
+      sidebarLayout(sidebarPanel(
+        h3("Who are we",
+           style = "padding-bottom: 20px")
+      ),
+      mainPanel(h4(
+        " Some text"
+      ))))
+  )
+)
+
+
+
+server <- function(input, output, session) {
+  observeEvent(input$location_ma, {
+    location_select <- "ma"
+    
+    
+    map_boundary <- boundaries[[location_select]]
+    map_net <- net[[location_select]]
+    map_roads <- roads[[location_select]]
+    output <-
+      interactive_map(input, output, map_boundary, map_net, map_roads)
+    
+  })
+  
+  observeEvent(input$location_dc, {
+    location_select <- "dc"
+    
+    
+    map_boundary <- boundaries[[location_select]]
+    map_net <- net[[location_select]]
+    map_roads <- roads[[location_select]]
+    
+    output <-
+      interactive_map(input, output, map_boundary, map_net, map_roads)
+    
+  })
+  
+  observeEvent(input$location_munich, {
+    location_select <- "munich"
+    
+    
+    map_boundary <- boundaries[[location_select]]
+    map_net <- net[[location_select]]
+    map_roads <- roads[[location_select]]
+    
+    
+    output <-
+      interactive_map(input, output, map_boundary, map_net, map_roads)
+    
+    
+  })
+  
+  # starting
+  
+  location_select <- "ma"
+  
+  map_boundary <- boundaries[[location_select]]
+  map_net <- net[[location_select]]
+  map_roads <- roads[[location_select]]
+  
+  shinyjs::disable("show_modal_btn")
+  
+  output <-
+    interactive_map(input, output, map_boundary, map_net, map_roads)
+  
+  
+}
+
+
+shinyApp(ui = ui, server = server)
