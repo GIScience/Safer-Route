@@ -124,8 +124,6 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
     safetyRating(input$safety_rating)
     removeModal()
     
-    print(map_roads)
-    
     net_edges <- map_roads |>
       activate("edges") |>
       st_as_sf()
@@ -208,13 +206,11 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
       # Convert the dataframe into an sf object
       points_sf <-
         st_as_sf(points_df, coords = c("X", "Y"), crs = 4326)
-      print(map_net)
       map_roads <- st_network_blend(map_net, points_sf)
       
       # Get the nearest features
       from_node <- st_nearest_feature(points_sf[1, ], map_roads)
       to_node <- st_nearest_feature(points_sf[2, ], map_roads)
-      print(input$route_pref)
       
       route_weight <- switch(
         input$route_pref,
