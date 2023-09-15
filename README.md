@@ -1,6 +1,6 @@
 # Safer Route
 
-To begin routing check out the live app [here](http://lemberg.geog.uni-heidelberg.de:3838/)!
+### To begin routing check out the live app [here](http://lemberg.geog.uni-heidelberg.de:3838/)!
 
 
 _A Collaborative Mapping Web-App_
@@ -9,7 +9,7 @@ Welcome to the [Safer Route repository](https://github.com/GIScience/Safer-Route
 
 | Fastest | Brightest | Safest |
 |:---:|:---:|:---:|
-|<img src="https://github.com/GIScience/Safer-Route/blob/main/aux/fast_route.png" width="300" height="261">|<img src="https://github.com/GIScience/Safer-Route/blob/main/aux/safer_route.png" width="300" height="261">|<img src="https://github.com/GIScience/Safer-Route/blob/main/aux/updated_safer_route.png" width="300" height="261">|
+|<img src="https://github.com/GIScience/Safer-Route/blob/main/aux/fast_route.png" width=100%>|<img src="https://github.com/GIScience/Safer-Route/blob/main/aux/safer_route.png" width=100%>|<img src="https://github.com/GIScience/Safer-Route/blob/main/aux/updated_safer_route.png" width=100%>|
 
 
 ## Introduction
