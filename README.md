@@ -15,6 +15,9 @@ Welcome to the [Safer Route repository](https://github.com/GIScience/Safer-Route
 
 Safer Route aims to empower users with the ability to make informed decisions about their routes in urban areas by leveraging data from various sources to assess the safety of different road segments and paths. The web-app combines both environmental data such as lighting levels from street lamps as well as user feedback on route safety. This collaborative approach ensures that the safety information provided reflects real user ratings and is up-to-date.
 
+## Disclaimer
+
+This is a pilot app that was developed over the course of roughly 3 weeks. All user safety ratings are randomly generated and do not reflect real safety scores. Additionally, the perception of safety as we outline here should not be taken as a definition of safety, rather this reflects our own biases and thoughts on safety. We hope that this app can jumpstart conversations on safety across genders, sexualities, and identities and that one day we all have the right to the city at all hours of the day without any fear for our safety or others!
 
 ## Features
 
@@ -46,8 +49,4 @@ The brightness score is based on the density of street lamps per road segment as
 
 ## How to set it up yourself
 
-tbd.
-
-## License
-
-tbd 
+Please find all of the instructions here: [setup.md](https://github.com/GIScience/Safer-Route/blob/main/setup.md)
