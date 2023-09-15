@@ -32,11 +32,11 @@ Based on user preferences and safety concerns, Safer Route can suggest alternati
 
 ### 5. Route Scoring
 
-## 5.1 User Safety Score
+#### 5.1 User Safety Score
 
 The safety score for each road segment is calculated by taking the average of all user safety ratings for that segment. This score is updated every time a user rates their route. For instance, if a user travels from Point A to Point B via Road Segments X, Y, and Z, and gives the route a score of 8, the ratings for Road Segments X, Y, and Z will be updated with a new average safety scores based on all previous ratings as well as this new rating. The goal of the safety score is to reflect a collaborative consensus of the safety and comfort of road segments at night. 
 
-## 5.2 Brightness Score
+#### 5.2 Brightness Score
 
 The brightness score is based on the density of street lamps per road segment as compared to other segments of its road type. I.e. Street A is a secondary road so we calculate its brightness score as a z-score based on the mean and standard deviation of all secondary road segments in the city then transform the z-score to a percentile rank which is diplayed as a score between 1-10. For example, a road segment with a brightness z-score of 3 will have a percentile rank of 99.87 which will be displayed as a brightness score of 9.9. Whereas a road segment with a z-score of 0 will have a percentile rank of 50 and a displayed brightness score of 5, as a z-score of 0 means the route sits right at the mean brightness of road segments of its respective type. This allows us to describe the brightness of a road segment relatively to other road segments of its type in each respective city. 
 
