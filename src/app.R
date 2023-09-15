@@ -20,6 +20,8 @@ tryCatch({
   stop("Failed to read preprocessed network. Make sure the file exists.")
 })
 
+safety_global <- list("ma"=roads[["ma"]] |> st_drop_geometry() |> select(c("osm_id", "mean_safetyscore")), "munich"=roads[["munich"]] |> st_drop_geometry() |> select(c("osm_id", "mean_safetyscore")), "dc"=roads[["dc"]] |> st_drop_geometry() |> select(c("osm_id", "mean_safetyscore")))
+
 pal <- colorNumeric(palette = viridisLite::mako(9), domain = 1:10)
 pal1 <- colorNumeric(palette = viridisLite::cividis(9), domain = 1:10)
 
@@ -73,7 +75,7 @@ create_map <- function(map_data, map_boundary) {
   
 }
 
-interactive_map <- function(input, output, map_boundary, map_net, map_roads){
+interactive_map <- function(input, output, map_boundary, map_net, map_roads, location_select){
   
   
   # Initialize reactive values for user-defined points
@@ -122,7 +124,7 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
     safetyRating(input$safety_rating)
     removeModal()
     
-    net_edges <- map_roads |>
+    net_edges <- map_net |>
       activate("edges") |>
       st_as_sf()
     
@@ -133,6 +135,7 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
       select(new_safetyscore, osm_id) |>
       st_drop_geometry()
     
+    safety_df <- safety_global[[location_select]]
     safety_df <- left_join(safety_df, path_edges, by = "osm_id")
     
     row_means <-
@@ -140,18 +143,18 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
     
     map_roads$mean_safetyscore <- row_means
     
-    map_roads <- as_sfnetwork(map_roads, directed = FALSE) |>
+    map_net <- as_sfnetwork(map_roads, directed = FALSE) |>
       activate("edges") |>
       mutate(edge_len = edge_length())
     
-    net_df <- map_roads %>%
+    net_df <- map_net %>%
       activate("edges") %>%
       as_tibble()
     
     # Print the mean of the 'mean_safetyscore' column
     print(mean(net_df$mean_safetyscore, na.rm = TRUE))
     
-    map_roads <- map_roads |>
+    map_net <- map_net |>
       activate("edges") |>
       mutate(
         norm_edge_len = as.numeric(normalize(edge_len)),
@@ -159,7 +162,7 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
         norm_safety = normalize(mean_safetyscore)
       )
     
-    map_roads <- map_roads |>
+    map_net <- map_net |>
       activate("edges") |>
       mutate(composite_weight = norm_edge_len + norm_safety + norm_brightness)
     
@@ -216,10 +219,10 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
       
       # Convert the dataframe into an sf object
         #map_roads <- st_network_blend(map_net, points_sf)
-        map_roads <- map_net
+        
         # Get the nearest features
-        from_node <- st_nearest_feature(points_sf[1, ], map_roads)
-        to_node <- st_nearest_feature(points_sf[2, ], map_roads)
+        from_node <- st_nearest_feature(points_sf[1, ], map_net)
+        to_node <- st_nearest_feature(points_sf[2, ], map_net)
         
         route_weight <- switch(
           input$route_pref,
@@ -229,7 +232,7 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
         )
         
         shortest_path <- tryCatch({
-          st_network_paths(map_roads,
+          st_network_paths(map_net,
                            from = from_node,
                            to = to_node,
                            weights = route_weight)
@@ -249,7 +252,7 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
           node_ids(shortest_path |> pull(node_paths))
           
           # Extract the corresponding lat/lng from the network object
-          net_nodes <- map_roads %>%
+          net_nodes <- map_net %>%
             activate("nodes") %>%
             st_as_sf()
           
@@ -485,7 +488,7 @@ server <- function(input, output, session) {
     map_net <- net[[location_select]]
     map_roads <- roads[[location_select]]
     output <-
-      interactive_map(input, output, map_boundary, map_net, map_roads)
+      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
     
   })
   
@@ -498,7 +501,7 @@ server <- function(input, output, session) {
     map_roads <- roads[[location_select]]
     
     output <-
-      interactive_map(input, output, map_boundary, map_net, map_roads)
+      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
     
   })
   
@@ -512,7 +515,7 @@ server <- function(input, output, session) {
     
     
     output <-
-      interactive_map(input, output, map_boundary, map_net, map_roads)
+      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
     
     
   })
@@ -528,7 +531,7 @@ server <- function(input, output, session) {
   shinyjs::disable("show_modal_btn")
   
   output <-
-    interactive_map(input, output, map_boundary, map_net, map_roads)
+    interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
   
   
 }
