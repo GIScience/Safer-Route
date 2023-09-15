@@ -9,7 +9,7 @@ Welcome to the [Safer Route repository](https://github.com/GIScience/Safer-Route
 
 | Fast | Safe | updated Safe |
 |---|---|---|
-|![Mannheim example for a fastest route](https://github.com/GIScience/Safer-Route/blob/main/aux/faster_route.png)|![Mannheim example for a safer route](https://github.com/GIScience/Safer-Route/blob/main/aux/safer_route.png)|![Mannheim example for an updated safer route](https://github.com/GIScience/Safer-Route/blob/main/aux/updated_safer_route.png)|
+|![Mannheim example for a fastest route](https://github.com/GIScience/Safer-Route/blob/main/aux/fast_route.png)|![Mannheim example for a safer route](https://github.com/GIScience/Safer-Route/blob/main/aux/safer_route.png)|![Mannheim example for an updated safer route](https://github.com/GIScience/Safer-Route/blob/main/aux/updated_safer_route.png)|
 
 ## Introduction
 
