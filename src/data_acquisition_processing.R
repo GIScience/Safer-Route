@@ -215,7 +215,6 @@ ma_boundary <- get_boundary("Mannheim")
 munich_roads <- get_roads("oberbayern", munich_boundary)
 dc_roads <- get_roads("us/district-of-columbia", dc_boundary)
 ma_roads <- get_roads("regierungsbezierk karlsruhe", ma_boundary)
-mapview::mapview(ma_roads)
 
 
 munich_lights <- get_mapillary(config$mapillary_api_key, munich_boundary, "object--street-light", "id")
