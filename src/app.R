@@ -79,8 +79,8 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
   # Initialize reactive values for user-defined points
   userPoints <-
     reactiveVal(data.frame(
-      lat = numeric(0),
-      lng = numeric(0)
+      Y = numeric(0),
+      X = numeric(0)
     ))
   node_ids <- reactiveVal(NULL)
   safetyRating <- reactiveVal(NULL)
@@ -94,8 +94,8 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
   # Listening for map click events
   observeEvent(input$mymap_click, {
     newPoint <- data.frame(
-      lat = input$mymap_click$lat,
-      lng = input$mymap_click$lng
+      Y = input$mymap_click$lat,
+      X = input$mymap_click$lng
     )
     
     print(userPoints)
@@ -189,94 +189,105 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
     leafletProxy("mymap") %>%
       addCircleMarkers(
         data = userPoints(),
-        ~ lng,
-        ~ lat,
+        ~ X,
+        ~ Y,
         radius = 5,
         color = "red"
       )
     
-    if (nrow(userPoints()) == 2) {
-      points_df <- data.frame(
-        X = c(userPoints()[1, 'lng'], userPoints()[2, 'lng']),
-        Y = c(userPoints()[1, 'lat'], userPoints()[2, 'lat'])
-      )
+    
+    points_df <- userPoints()
+    
+    if (nrow(points_df) == 2) {
+      points_sf <- st_as_sf(points_df, coords = c("X", "Y"), crs = 4326)
+      
+      distance <- as.numeric(st_distance(points_sf[1, ], points_sf[2, ]), units = "m")
+      
+      if (distance >= 50000) {
+        userPoints(points_df[2, , drop = FALSE])
+      }
+      else {
+        
+    # if (nrow(userPoints()) == 2) {
+    #   points_df <- data.frame(
+    #     X = c(userPoints()[1, 'X'], userPoints()[2, 'X']),
+    #     Y = c(userPoints()[1, 'Y'], userPoints()[2, 'Y'])
+    #   )
       
       # Convert the dataframe into an sf object
-      points_sf <-
-        st_as_sf(points_df, coords = c("X", "Y"), crs = 4326)
-      map_roads <- st_network_blend(map_net, points_sf)
-      
-      # Get the nearest features
-      from_node <- st_nearest_feature(points_sf[1, ], map_roads)
-      to_node <- st_nearest_feature(points_sf[2, ], map_roads)
-      
-      route_weight <- switch(
-        input$route_pref,
-        safe={"composite_weight"},
-        fast={"norm_edge_len"},
-        lit={"norm_brightness"}
-      )
-      
-      shortest_path <- tryCatch({
-        st_network_paths(map_roads,
-                         from = from_node,
-                         to = to_node,
-                         weights = route_weight)
-      }, warning = function(w) {
-        showModal(
-          modalDialog(
-            title = "Warning",
-            "The selected points are not connected. Please select two new points."
-          )
+        map_roads <- st_network_blend(map_net, points_sf)
+        
+        # Get the nearest features
+        from_node <- st_nearest_feature(points_sf[1, ], map_roads)
+        to_node <- st_nearest_feature(points_sf[2, ], map_roads)
+        
+        route_weight <- switch(
+          input$route_pref,
+          safe={"composite_weight"},
+          fast={"norm_edge_len"},
+          lit={"norm_brightness"}
         )
-        NULL
-      }, error = function(e) {
-        NULL
-      })
-      
-      if (!is.null(shortest_path)) {
-        node_ids(shortest_path |> pull(node_paths))
         
-        # Extract the corresponding lat/lng from the network object
-        net_nodes <- map_roads %>%
-          activate("nodes") %>%
-          st_as_sf()
-        
-        path_coords <- net_nodes[node_ids()[[1]],]
-        
-        # Extract the coordinates
-        path_coordinates <- st_coordinates(path_coords)
-        
-        # Create a LINESTRING
-        path_linestring <- st_linestring(path_coordinates)
-        
-        # Create an sf object
-        path_sf <-
-          st_sf(geometry = st_sfc(path_linestring, crs = st_crs(path_coords)))
-        
-        # Assign a unique ID to the user path
-        userPathID("userPath")
-        
-        # Remove the previous user path
-        if (!is.null(userPathID()) && is.character(userPathID())) {
-          leafletProxy("mymap") %>%
-            removeShape(layerId = userPathID())
-        }
-        
-        
-        # Add the new user path
-        leafletProxy("mymap") %>%
-          addPolylines(
-            data = path_sf,
-            color = "blue",
-            weight = 3,
-            layerId = userPathID()
+        shortest_path <- tryCatch({
+          st_network_paths(map_roads,
+                           from = from_node,
+                           to = to_node,
+                           weights = route_weight)
+        }, warning = function(w) {
+          showModal(
+            modalDialog(
+              title = "Warning",
+              "The selected points are not connected. Please select two new points."
+            )
           )
+          NULL
+        }, error = function(e) {
+          NULL
+        })
         
-        shinyjs::enable("show_modal_btn")
-        
+        if (!is.null(shortest_path)) {
+          node_ids(shortest_path |> pull(node_paths))
+          
+          # Extract the corresponding lat/lng from the network object
+          net_nodes <- map_roads %>%
+            activate("nodes") %>%
+            st_as_sf()
+          
+          path_coords <- net_nodes[node_ids()[[1]],]
+          
+          # Extract the coordinates
+          path_coordinates <- st_coordinates(path_coords)
+          
+          # Create a LINESTRING
+          path_linestring <- st_linestring(path_coordinates)
+          
+          # Create an sf object
+          path_sf <-
+            st_sf(geometry = st_sfc(path_linestring, crs = st_crs(path_coords)))
+          
+          # Assign a unique ID to the user path
+          userPathID("userPath")
+          
+          # Remove the previous user path
+          if (!is.null(userPathID()) && is.character(userPathID())) {
+            leafletProxy("mymap") %>%
+              removeShape(layerId = userPathID())
+          }
+          
+          
+          # Add the new user path
+          leafletProxy("mymap") %>%
+            addPolylines(
+              data = path_sf,
+              color = "blue",
+              weight = 3,
+              layerId = userPathID()
+            )
+          
+          shinyjs::enable("show_modal_btn")
+          
+        }
       }
-      
     }
   })
   return(output)
