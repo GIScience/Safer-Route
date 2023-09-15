@@ -20,7 +20,7 @@ tryCatch({
   stop("Failed to read preprocessed network. Make sure the file exists.")
 })
 
-safety_global <- list("ma"=roads[["ma"]] |> st_drop_geometry() |> select(c("osm_id", "mean_safetyscore")), "munich"=roads[["munich"]] |> st_drop_geometry() |> select(c("osm_id", "mean_safetyscore")), "dc"=roads[["dc"]] |> st_drop_geometry() |> select(c("osm_id", "mean_safetyscore")))
+
 
 pal <- colorNumeric(palette = viridisLite::mako(9), domain = 1:10)
 pal1 <- colorNumeric(palette = viridisLite::cividis(9), domain = 1:10)

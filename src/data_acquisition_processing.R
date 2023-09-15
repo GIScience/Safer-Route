@@ -136,7 +136,7 @@ add_mean_safety_score <- function(roads) {
   row_means <- rowMeans(safety_df[, !names(safety_df) %in% "osm_id"], na.rm = TRUE)
   
   roads$mean_safetyscore <- row_means
-  return(roads)
+  return(list(roads,safety_df))
 }
 
 
@@ -252,13 +252,31 @@ munich_roads <- st_transform(munich_roads, 4326)
 dc_roads <- st_transform(dc_roads, 4326)
 ma_roads <- st_transform(ma_roads, 4326)
 
-munich_roads <- add_mean_safety_score(munich_roads)
-dc_roads <- add_mean_safety_score(dc_roads)
-ma_roads <- add_mean_safety_score(ma_roads)
+munich_roads_list <- add_mean_safety_score(munich_roads)
+dc_roads_list <- add_mean_safety_score(dc_roads)
+ma_roads_list <- add_mean_safety_score(ma_roads)
+
+munich_roads <- munich_roads_list[[1]]
+dc_roads <- dc_roads_list[[1]]
+ma_roads <- ma_roads_list[[1]]
+
+munich_safety_df <- munich_roads_list[[2]]
+dc_safety_df <- dc_roads_list[[2]]
+ma_safety_df <- ma_roads_list[[2]]
+
 
 munich_net <- process_graph(munich_roads)
 dc_net <- process_graph(dc_roads)
 ma_net <- process_graph(ma_roads)
+
+safety_global <- list(
+  "ma"=roads[["ma"]] |> st_drop_geometry() |> select(c("osm_id", "mean_safetyscore")), "munich"=roads[["munich"]] |> st_drop_geometry() |> select(c("osm_id", "mean_safetyscore")), "dc"=roads[["dc"]] |> st_drop_geometry() |> select(c("osm_id", "mean_safetyscore")))
+
+safety_global <- list(
+  "ma"=ma_safety_df,
+  "munich"=munich_safety_df,
+  "dc"=dc_safety_df
+)
 
 boundaries <-list(
   "ma" = ma_boundary,
@@ -280,6 +298,6 @@ net <- list(
 
 
 
-save(boundaries,roads,net, file="data/data.RData")
+save(boundaries,roads,net,safety_global, file="data/data.RData")
 
 
