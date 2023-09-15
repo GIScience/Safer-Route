@@ -32,7 +32,7 @@ normalize <- function(x) {
 create_map <- function(map_data, map_boundary) {
   
   bbox <- map_boundary |> st_bbox() |>  as.numeric()
-  bbox_max <- map_boundary |> st_buffer(1) |> st_bbox() |> as.numeric()
+  bbox_max <- map_boundary |> st_buffer(4) |> st_bbox() |> as.numeric()
   
   
   lmap <- renderLeaflet({
