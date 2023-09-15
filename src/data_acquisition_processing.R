@@ -62,7 +62,7 @@ get_official_streetlights <- function(boundary){
   }
   street_lights <- st_read("data/Street_Lights.geojson", quiet=T)
 
-  street_lights <- st_filter(boundary, street_lights)
+  street_lights <- st_filter(street_lights, boundary)
   return(street_lights)
 }
 
@@ -115,7 +115,7 @@ link_roads_lights <- function(roads, street_lights) {
     mutate(
       mean_value = mean(lights_per_area, na.rm = TRUE),
       sd_value = sd(lights_per_area, na.rm = TRUE),
-      brightness_zscore = (lights_per_area - mean_value) / sd_value
+      brightness_zscore = pnorm((lights_per_area - mean_value) / sd_value)
     ) |>
     ungroup() |> 
     mutate(brightness_zscore_rescale = scales::rescale(brightness_zscore, to=c(1,10)))
