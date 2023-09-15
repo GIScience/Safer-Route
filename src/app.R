@@ -215,8 +215,8 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads){
     #   )
       
       # Convert the dataframe into an sf object
-        map_roads <- st_network_blend(map_net, points_sf)
-        
+        #map_roads <- st_network_blend(map_net, points_sf)
+        map_roads <- map_net
         # Get the nearest features
         from_node <- st_nearest_feature(points_sf[1, ], map_roads)
         to_node <- st_nearest_feature(points_sf[2, ], map_roads)
