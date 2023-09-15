@@ -7,7 +7,7 @@ _A Collaborative Mapping Web-App_
 
 Welcome to the [Safer Route repository](https://github.com/GIScience/Safer-Route)! Safer Route is a collaborative mapping web application designed to enhance safety awareness for pedestrians by providing insights into the perceived safety of urban roads, paths, and routes. This README will guide you through the project, its goals, features, and how to contribute.
 
-| Fast | Safe | updated Safe |
+| Fast | Brightest | Safe |
 |---|---|---|
 |![Mannheim example for a fastest route](https://github.com/GIScience/Safer-Route/blob/main/aux/fast_route.png)|![Mannheim example for a safer route](https://github.com/GIScience/Safer-Route/blob/main/aux/safer_route.png)|![Mannheim example for an updated safer route](https://github.com/GIScience/Safer-Route/blob/main/aux/updated_safer_route.png)|
 
