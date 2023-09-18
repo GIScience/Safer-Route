@@ -21,23 +21,30 @@ put it into a `config/config.json` file:
 Run openrouteservice locally to export the pedestrian graph
 ```
 
-wget http://download.geofabrik.de/europe/germany/baden-wuerttemberg/karlsruhe-regbez-latest.osm.pbf -N --directory-prefix=data/ -O geofabrik_karlsruhe-regbez-latest.osm.pbf
+wget http://download.geofabrik.de/europe/germany/baden-wuerttemberg/karlsruhe-regbez-latest.osm.pbf -N -O data/geofabrik_karlsruhe-regbez-latest.osm.pbf
 
-wget http://download.geofabrik.de/europe/germany/bayern/oberbayern-latest.osm.pbf -N --directory-prefix=data/ -O geofabrik_oberbayern_latest.osm.pbf
+wget http://download.geofabrik.de/europe/germany/bayern/oberbayern-latest.osm.pbf -N -O data/geofabrik_oberbayern-latest.osm.pbf
 
-wget http://download.geofabrik.de/north-america/us/district-of-columbia-latest.osm.pbf -N --directory-prefix=data/ -O geofabrik_district-of-columbia-latest.osm.pbf
+wget http://download.geofabrik.de/north-america/us/district-of-columbia-latest.osm.pbf -N -O data/geofabrik_district-of-columbia-latest.osm.pbf
 
-osmium extract -b 8.412699,49.409633,8.590426,49.591490 data/geofabrik_karlsruhe-regbez-latest.osm.pbf -o ma.pbf --overwrite     
+osmium extract -b 8.412699,49.409633,8.590426,49.591490 data/geofabrik_karlsruhe-regbez-latest.osm.pbf -o data/ma.pbf --overwrite
 
-osmium extract -b 11.35963,48.06082,11.72441,48.25068 data/geofabrik_oberbayern_latest.osm.pbf -o munich.pbf --overwrite     
+osmium extract -b 11.35963,48.06082,11.72441,48.25068 data/geofabrik_oberbayern-latest.osm.pbf -o data/munich.pbf --overwrite 
 
-osmium extract -b -77.12119,38.79080,-76.90884,38.99678 data/geofabrik_district-of-columbia-latest.osm.pbf -o ma.pbf --overwrite    
+osmium extract -b -77.12119,38.79080,-76.90884,38.99678 data/geofabrik_district-of-columbia-latest.osm.pbf -o data/dc.pbf --overwrite
 
-osmium merge osm_file_ma.pbf osm_file_munich.pbf osm_file_dc.pbf -o osm_file.pbf --overwrite
+osmium merge data/ma.pbf data/munich.pbf data/dc.pbf -o data/osm_file.pbf --overwrite
 
 ```
 
-Fire up your local openrouteservice container
+Create the openrouteservice folders to not fiddle with permisions. Move the configuration (pedestrian only) to the corresponding folder.
+
+```
+mkdir -p docker/conf docker/elevation_cache docker/graphs docker/logs/ors docker/logs/tomcat docker/data
+
+mv ors-config.json docker/conf/.
+```
+
 
 ```
 ORS_UID=${UID} ORS_GID=${GID} docker-compose -f ors-docker-compose.yml up
