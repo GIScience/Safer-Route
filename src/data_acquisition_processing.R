@@ -17,6 +17,7 @@ library(scales)
 
 
 source("src/get_mapillary.R")
+source("src/get_graph.R")
 
 get_boundary <- function(name) {
   boundary <- opq(name) %>% #search for munich
@@ -72,46 +73,55 @@ link_roads_lights <- function(roads, street_lights) {
 
 
   # Add buffer distance based on road type
-  roads <- roads |>
-    mutate(
-      buffer_distance = case_when(
-        highway == 'motorway' ~ 30,
-        # in meters
-        highway == 'motorway_link' ~ 30,
-        highway == 'trunk' ~ 23,
-        highway == 'trunk_link' ~ 23,
-        highway == 'primary' ~ 17,
-        highway == 'primary_link' ~ 17,
-        highway == 'secondary' ~ 15,
-        highway == 'secondary_link' ~ 15,
-        highway == 'tertiary' ~ 13,
-        highway == 'tertiary_link' ~ 13,
-        highway == 'residential' ~ 10,
-        highway == 'living_street' ~ 10,
-        highway == 'unclassified' ~ 10,
-        highway == 'footway' ~ 10,
-        highway == 'path' ~ 10,
-        TRUE ~ 5
-      )
-    )
+  # roads <- roads |>
+  #   mutate(
+  #     buffer_distance = case_when(
+  #       highway == 'motorway' ~ 30,
+  #       # in meters
+  #       highway == 'motorway_link' ~ 30,
+  #       highway == 'trunk' ~ 23,
+  #       highway == 'trunk_link' ~ 23,
+  #       highway == 'primary' ~ 17,
+  #       highway == 'primary_link' ~ 17,
+  #       highway == 'secondary' ~ 15,
+  #       highway == 'secondary_link' ~ 15,
+  #       highway == 'tertiary' ~ 13,
+  #       highway == 'tertiary_link' ~ 13,
+  #       highway == 'residential' ~ 10,
+  #       highway == 'living_street' ~ 10,
+  #       highway == 'unclassified' ~ 10,
+  #       highway == 'footway' ~ 10,
+  #       highway == 'path' ~ 10,
+  #       TRUE ~ 5
+  #     )
+  #   )
 
+  roads <- roads |> 
+    mutate(
+      buffer_distance = 20)
+  
+  
   # Keep the original geometry for later use
   roads_geom <- st_geometry(roads)
 
+  
   # Create buffered geometries
   roads <- roads |> st_buffer(dist = roads$buffer_distance)
 
 
   roads$light_count <- roads |>
     st_intersects(street_lights) |> lengths()
+  
+  
+  roads$area <- roads |> st_area() |> as.numeric()
 
   # Compute light count per area
   roads <- roads |>
-    mutate(lights_per_area = light_count / as.numeric(st_area(geometry)))
+    mutate(lights_per_area = light_count / area)
 
   # Compute z-scores based on road types
   roads <- roads |>
-    group_by(highway) |>
+    #group_by(highway) |>
     mutate(
       mean_value = mean(lights_per_area, na.rm = TRUE),
       sd_value = sd(lights_per_area, na.rm = TRUE),
@@ -211,26 +221,52 @@ munich_boundary <- get_boundary("München")
 dc_boundary <- get_boundary("Washington")
 ma_boundary <- get_boundary("Mannheim")
 
+munich_graph <- get_graph(host="localhost", port=8080, munich_boundary |> st_bbox(), munich_boundary, "foot-walking", 4)
+dc_graph <- get_graph(host="localhost", port=8080, dc_boundary |> st_bbox(), dc_boundary, "foot-walking", 4)
+ma_graph <- get_graph(host="localhost", port=8080, ma_boundary |> st_bbox(), ma_boundary, "foot-walking", 4)
 
-munich_roads <- get_roads("oberbayern", munich_boundary)
-dc_roads <- get_roads("us/district-of-columbia", dc_boundary)
-ma_roads <- get_roads("regierungsbezierk karlsruhe", ma_boundary)
+
+munich_roads <- munich_graph[[1]]
+dc_roads <- dc_graph[[1]]
+ma_roads <- ma_graph[[1]]
+
+# necessary?
+munich_graph <- munich_graph[[2]]
+dc_graph <- dc_graph[[2]]
+ma_graph <- ma_graph[[2]]
+
+# munich_roads <- get_roads("oberbayern", munich_boundary)
+# dc_roads <- get_roads("us/district-of-columbia", dc_boundary)
+# ma_roads <- get_roads("regierungsbezierk karlsruhe", ma_boundary)
 
 
-munich_lights <- get_mapillary(config$mapillary_api_key, munich_boundary, "object--street-light", "id")
-# returns a list of the lights and the grid with counts
+# check if we have mapillay data already downloaded
+if (!file.exists("data/munich_lights.rds")) {
+  munich_lights <- get_mapillary(config$mapillary_api_key, munich_boundary, "object--street-light", "id")
+  
+  # check that no grid has exaclty 2000 lights (maximum of the api)
+  munich_lights_grid <- munich_lights[[2]] # just for validating amount of lights per cell
+  munich_lights <- munich_lights[[1]]
+  #munich_lights_grid$count |> max(na.rm=T)
+  
+  saveRDS(munich_lights, "data/munich_lights.rds")
+} else {
+  munich_ligths <- readRDS("data/munich_lights.rds")
+}
+
+if (!file.exists("data/ma_lights.rds")) {
+  ma_lights <- get_mapillary(config$mapillary_api_key, ma_boundary, "object--street-light", "id")
+  ma_lights_grid <- ma_lights[[2]]
+  ma_lights <- ma_lights[[1]]
+  #ma_lights_grid$count |> max(na.rm=T)
+  saveRDS(ma_lights, "data/ma_lights.rds")
+} else {
+  ma_ligths <- readRDS("data/ma_lights.rds")
+}
+
+
+
 dc_lights <- get_official_streetlights(dc_boundary)
-ma_lights <- get_mapillary(config$mapillary_api_key, ma_boundary, "object--street-light", "id")
-
-munich_lights_grid <- munich_lights[[2]] # just for validating amount of lights per cell
-munich_lights <- munich_lights[[1]]
-
-ma_lights_grid <- ma_lights[[2]]
-ma_lights <- ma_lights[[1]]
-
-# check that no grid has exaclty 2000 lights (maximum of the api)
-ma_lights_grid$count |> max(na.rm=T)
-munich_lights_grid$count |> max(na.rm=T)
 
 
 #3 run processing ---------------------------------
