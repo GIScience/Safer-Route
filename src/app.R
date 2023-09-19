@@ -9,6 +9,7 @@ library(shinythemes)
 library(viridisLite)
 
 
+
 # Read preprocessed network (make sure this file exists in your working directory)
 tryCatch({
   #net <- readRDS("../data/DC_connected_net.rds")
@@ -38,38 +39,41 @@ create_map <- function(map_data, map_boundary) {
   
   
   lmap <- renderLeaflet({
-    leaflet(data = map_data) %>%
+    leaflet(
+      data = NULL
+            ) %>%
       addProviderTiles(providers$CartoDB.Positron) %>%
       #setView(lng = -77.0369, lat = 38.9072, zoom = 12) %>%
       fitBounds(bbox[1], bbox[2], bbox[3], bbox[4]) %>%
-      setMaxBounds(bbox_max[1], bbox_max[2], bbox_max[3], bbox_max[4]) %>%
-      addPolylines(
-        color = ~ pal(mean_safetyscore),
-        weight = 2,
-        group = "Safety Score"
-      ) %>%
-      addPolylines(
-        color = ~ pal1(brightness_zscore_rescale),
-        weight = 2,
-        group = "Brightness Score"
-      ) %>%
-      addLayersControl(
-        overlayGroups = c("Safety Score", "Brightness Score"),
-        options = layersControlOptions(collapsed = FALSE)
-      ) %>%
-      hideGroup(c("Safety Score", "Brightness Score")) %>%
-      addLegend(
-        pal = pal,
-        values = 1:10,
-        title = "Safety Score",
-        position = "bottomright"
-      ) %>%
-      addLegend(
-        pal = pal1,
-        values = ~ 1:10,
-        title = "Brightness Score",
-        position = "bottomleft"
-      )
+      setMaxBounds(bbox_max[1], bbox_max[2], bbox_max[3], bbox_max[4]) 
+    # %>%
+    #   addPolylines(
+    #     color = ~ pal(mean_safetyscore),
+    #     weight = 2,
+    #     group = "Safety Score"
+    #   ) %>%
+    #   addPolylines(
+    #     color = ~ pal1(brightness_zscore_rescale),
+    #     weight = 2,
+    #     group = "Brightness Score"
+    #   ) %>%
+    #   addLayersControl(
+    #     overlayGroups = c("Safety Score", "Brightness Score"),
+    #     options = layersControlOptions(collapsed = FALSE)
+    #   ) %>%
+    #   hideGroup(c("Safety Score", "Brightness Score")) %>%
+    #   addLegend(
+    #     pal = pal,
+    #     values = 1:10,
+    #     title = "Safety Score",
+    #     position = "bottomright"
+    #   ) %>%
+    #   addLegend(
+    #     pal = pal1,
+    #     values = ~ 1:10,
+    #     title = "Brightness Score",
+    #     position = "bottomleft"
+    #   )
   })
   return(lmap)
   
@@ -323,7 +327,9 @@ ui <- fluidPage(
           actionButton("location_dc", "Washington D.C."),
           actionButton("location_munich", "Munich"),
           h5("Rate safety"),
-          actionButton("show_modal_btn", "Rate Safety of Route")
+          actionButton("show_modal_btn", "Rate Safety of Route"),
+          h5("Visualize Dimensions"),
+          actionButton("loadButton", "Load Layers")
         ),
         mainPanel(
           tags$style(type = "text/css", "#mymap {height: calc(100vh - 180px) !important;}"),
@@ -486,6 +492,17 @@ server <- function(input, output, session) {
       interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
     
     
+  })
+  
+  
+  observeEvent(input$loadButton, {
+    leafletProxy("mymap") %>%
+      addPolylines(
+            color = ~ pal1(brightness_zscore_rescale),
+            weight = 2,
+            group = "Brightness Score",
+            data=map_roads
+          )
   })
   
   # starting
