@@ -312,8 +312,8 @@ munich_net <- process_graph(munich_roads)
 dc_net <- process_graph(dc_roads)
 ma_net <- process_graph(ma_roads)
 
-safety_global <- list(
-  "ma"=roads[["ma"]] |> st_drop_geometry() |> select(c("row_id", "mean_safetyscore")), "munich"=roads[["munich"]] |> st_drop_geometry() |> select(c("row_id", "mean_safetyscore")), "dc"=roads[["dc"]] |> st_drop_geometry() |> select(c("row_id", "mean_safetyscore")))
+# safety_global <- list(
+#   "ma"=roads[["ma"]] |> st_drop_geometry() |> select(c("row_id", "mean_safetyscore")), "munich"=roads[["munich"]] |> st_drop_geometry() |> select(c("row_id", "mean_safetyscore")), "dc"=roads[["dc"]] |> st_drop_geometry() |> select(c("row_id", "mean_safetyscore")))
 
 safety_global <- list(
   "ma"=ma_safety_df,
