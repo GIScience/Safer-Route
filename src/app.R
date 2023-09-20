@@ -143,9 +143,23 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
     
     map_roads$mean_safetyscore <- row_means
     
-    map_net <- as_sfnetwork(map_roads, directed = FALSE) |>
+    # map_net <- as_sfnetwork(map_roads, directed = FALSE) |>
+    #   activate("edges") |>
+    #   mutate(edge_len = edge_length())
+    #   
+    
+    
+    map_net <- map_roads |> 
+      as_sfnetwork(directed=TRUE)
+    
+    map_net <- map_net |>
       activate("edges") |>
-      mutate(edge_len = edge_length())
+      mutate(
+        norm_weight = as.numeric(normalize(weight)),
+        norm_safety = normalize(mean_safetyscore),
+        norm_brightness = normalize(brightness_zscore_rescale)
+      )
+    
     
     net_df <- map_net %>%
       activate("edges") %>%
@@ -154,17 +168,18 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
     # Print the mean of the 'mean_safetyscore' column
     print(mean(net_df$mean_safetyscore, na.rm = TRUE))
     
+
     map_net <- map_net |>
       activate("edges") |>
-      mutate(
-        norm_edge_len = as.numeric(normalize(edge_len)),
-        norm_brightness = normalize(brightness_zscore_rescale),
-        norm_safety = normalize(mean_safetyscore)
-      )
+      mutate(composite_weight = norm_weight + norm_safety + norm_brightness)
     
-    map_net <- map_net |>
-      activate("edges") |>
-      mutate(composite_weight = norm_edge_len + norm_safety + norm_brightness)
+    
+    
+    # Normalize weights from 0 to 1 so that they can be equally weighted
+    
+    
+
+    
     
   })
   
@@ -227,7 +242,7 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
         route_weight <- switch(
           input$route_pref,
           safe={"composite_weight"},
-          fast={"norm_edge_len"},
+          fast={"norm_weight"},
           lit={"norm_brightness"}
         )
         
