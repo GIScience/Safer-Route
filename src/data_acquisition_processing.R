@@ -137,13 +137,16 @@ link_roads_lights <- function(roads, street_lights) {
 
 
 add_mean_safety_score <- function(roads) {
-  safety_df <- roads |> select(osm_id) |> st_drop_geometry()
+  
+  roads <- roads |> mutate(row_id= row_number())
+  
+  safety_df <- roads |> select(row_id) |> st_drop_geometry()
   for (i in 1:10) {
     new_column_name <- paste("safetyscore", i, sep = "")
     safety_df[, new_column_name] <- sample(1:10, size = nrow(roads), replace = TRUE)
   }
   
-  row_means <- rowMeans(safety_df[, !names(safety_df) %in% "osm_id"], na.rm = TRUE)
+  row_means <- rowMeans(safety_df[, !names(safety_df) %in% "row_id"], na.rm = TRUE)
   
   roads$mean_safetyscore <- row_means
   return(list(roads,safety_df))
@@ -151,6 +154,8 @@ add_mean_safety_score <- function(roads) {
 
 
 process_graph <- function(roads){
+  
+  
   temp_df <- data.frame(matrix(ncol = 10, nrow = nrow(roads)))
 
   # Generate random scores 1-10 for each column
@@ -163,10 +168,11 @@ process_graph <- function(roads){
 
   # Add the calculated row means as a new column to roads
   roads$mean_safetyscore <- row_means
-
+  
+  
 
   roads <- roads |>
-    select(osm_id, highway, mean_safetyscore, brightness_zscore)
+    select(row_id, weight, mean_safetyscore, brightness_zscore_rescale )
 
   
 
@@ -177,30 +183,34 @@ process_graph <- function(roads){
   }
 
   # Calculate edge lengths
-  net <- as_sfnetwork(roads, directed = FALSE) |>
-    activate("edges") |>
-    mutate(edge_len = edge_length())
+  # net <- as_sfnetwork(roads, directed = FALSE) |>
+  #   activate("edges") |>
+  #   mutate(edge_len = edge_length())
 
+  
+  net <- roads |> 
+     as_sfnetwork(directed=TRUE)
+  
   # Normalize weights from 0 to 1 so that they can be equally weighted
   net <- net |>
     activate("edges") |>
     mutate(
-      norm_edge_len = as.numeric(normalize(edge_len)),
+      norm_weight = as.numeric(normalize(weight)),
       norm_safety = normalize(mean_safetyscore),
-      norm_brightness = normalize(brightness_zscore)
+      norm_brightness = normalize(brightness_zscore_rescale)
     )
 
   # Create a composite weight
   net <- net |>
     activate("edges") |>
     mutate(
-      composite_weight = norm_edge_len + norm_safety + norm_brightness
+      composite_weight = norm_weight + norm_safety + norm_brightness
     )
 
   # select the largest component
-  net = net |>
-    activate("nodes") |>
-    filter(group_components() == 1)
+  # net = net |>
+  #   activate("nodes") |>
+  #   filter(group_components() == 1)
 
   return(net)
 }
@@ -243,28 +253,25 @@ ma_graph <- ma_graph[[2]]
 # check if we have mapillay data already downloaded
 if (!file.exists("data/munich_lights.rds")) {
   munich_lights <- get_mapillary(config$mapillary_api_key, munich_boundary, "object--street-light", "id")
-  
-  # check that no grid has exaclty 2000 lights (maximum of the api)
-  munich_lights_grid <- munich_lights[[2]] # just for validating amount of lights per cell
-  munich_lights <- munich_lights[[1]]
-  #munich_lights_grid$count |> max(na.rm=T)
-  
   saveRDS(munich_lights, "data/munich_lights.rds")
 } else {
-  munich_ligths <- readRDS("data/munich_lights.rds")
+  munich_lights <- readRDS("data/munich_lights.rds")
 }
+# check that no grid has exaclty 2000 lights (maximum of the api)
+munich_lights_grid <- munich_lights[[2]] # just for validating amount of lights per cell
+munich_lights <- munich_lights[[1]]
+munich_lights_grid$count |> max(na.rm=T)
+
 
 if (!file.exists("data/ma_lights.rds")) {
   ma_lights <- get_mapillary(config$mapillary_api_key, ma_boundary, "object--street-light", "id")
-  ma_lights_grid <- ma_lights[[2]]
-  ma_lights <- ma_lights[[1]]
-  #ma_lights_grid$count |> max(na.rm=T)
   saveRDS(ma_lights, "data/ma_lights.rds")
 } else {
-  ma_ligths <- readRDS("data/ma_lights.rds")
+  ma_lights <- readRDS("data/ma_lights.rds")
 }
-
-
+ma_lights_grid <- ma_lights[[2]]
+ma_lights <- ma_lights[[1]]
+ma_lights_grid$count |> max(na.rm=T)
 
 dc_lights <- get_official_streetlights(dc_boundary)
 
@@ -306,7 +313,7 @@ dc_net <- process_graph(dc_roads)
 ma_net <- process_graph(ma_roads)
 
 safety_global <- list(
-  "ma"=roads[["ma"]] |> st_drop_geometry() |> select(c("osm_id", "mean_safetyscore")), "munich"=roads[["munich"]] |> st_drop_geometry() |> select(c("osm_id", "mean_safetyscore")), "dc"=roads[["dc"]] |> st_drop_geometry() |> select(c("osm_id", "mean_safetyscore")))
+  "ma"=roads[["ma"]] |> st_drop_geometry() |> select(c("row_id", "mean_safetyscore")), "munich"=roads[["munich"]] |> st_drop_geometry() |> select(c("row_id", "mean_safetyscore")), "dc"=roads[["dc"]] |> st_drop_geometry() |> select(c("row_id", "mean_safetyscore")))
 
 safety_global <- list(
   "ma"=ma_safety_df,
