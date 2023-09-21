@@ -208,9 +208,9 @@ process_graph <- function(roads){
     )
 
   # select the largest component
-  # net = net |>
-  #   activate("nodes") |>
-  #   filter(group_components() == 1)
+  net = net |>
+   activate("nodes") |>
+   filter(group_components() == 1)
 
   return(net)
 }

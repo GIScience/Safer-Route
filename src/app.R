@@ -46,7 +46,7 @@ create_map <- function(map_data, map_boundary) {
       #setView(lng = -77.0369, lat = 38.9072, zoom = 12) %>%
       fitBounds(bbox[1], bbox[2], bbox[3], bbox[4]) %>%
       setMaxBounds(bbox_max[1], bbox_max[2], bbox_max[3], bbox_max[4]) 
-    # %>%
+    # %>% 
     #   addPolylines(
     #     color = ~ pal(mean_safetyscore),
     #     weight = 2,
@@ -136,14 +136,14 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
     
     path_edges <- path_edges |>
       mutate(new_safetyscore = safetyRating()) |>
-      select(new_safetyscore, osm_id) |>
+      select(new_safetyscore, row_id) |>
       st_drop_geometry()
     
     safety_df <- safety_global[[location_select]]
-    safety_df <- left_join(safety_df, path_edges, by = "osm_id")
+    safety_df <- left_join(safety_df, path_edges, by = "row_id")
     
     row_means <-
-      rowMeans(safety_df[, !names(safety_df) %in% "osm_id"], na.rm = TRUE)
+      rowMeans(safety_df[, !names(safety_df) %in% "row_id"], na.rm = TRUE)
     
     map_roads$mean_safetyscore <- row_means
     
@@ -177,8 +177,7 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
       activate("edges") |>
       mutate(composite_weight = norm_weight + norm_safety + norm_brightness)
     
-    
-    
+
     # Normalize weights from 0 to 1 so that they can be equally weighted
     
     
@@ -267,6 +266,7 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
           NULL
         })
         
+        
         if (!is.null(shortest_path)) {
           node_ids(shortest_path |> pull(node_paths))
           
@@ -283,6 +283,8 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
           # Create a LINESTRING
           path_linestring <- st_linestring(path_coordinates)
           
+          
+          
           # Create an sf object
           path_sf <-
             st_sf(geometry = st_sfc(path_linestring, crs = st_crs(path_coords)))
@@ -294,9 +296,8 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
           if (!is.null(userPathID()) && is.character(userPathID())) {
             leafletProxy("mymap") %>%
               removeShape(layerId = userPathID())
+            
           }
-          
-          
           # Add the new user path
           leafletProxy("mymap") %>%
             addPolylines(
@@ -305,7 +306,6 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
               weight = 3,
               layerId = userPathID()
             )
-          
           shinyjs::enable("show_modal_btn")
           
         }
