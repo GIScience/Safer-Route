@@ -9,6 +9,7 @@ library(shinythemes)
 library(viridisLite)
 
 
+
 # Read preprocessed network (make sure this file exists in your working directory)
 tryCatch({
   #net <- readRDS("../data/DC_connected_net.rds")
@@ -38,38 +39,41 @@ create_map <- function(map_data, map_boundary) {
   
   
   lmap <- renderLeaflet({
-    leaflet(data = map_data) %>%
+    leaflet(
+      data = NULL
+            ) %>%
       addProviderTiles(providers$CartoDB.Positron) %>%
       #setView(lng = -77.0369, lat = 38.9072, zoom = 12) %>%
       fitBounds(bbox[1], bbox[2], bbox[3], bbox[4]) %>%
-      setMaxBounds(bbox_max[1], bbox_max[2], bbox_max[3], bbox_max[4]) %>%
-      addPolylines(
-        color = ~ pal(mean_safetyscore),
-        weight = 2,
-        group = "Safety Score"
-      ) %>%
-      addPolylines(
-        color = ~ pal1(brightness_zscore_rescale),
-        weight = 2,
-        group = "Brightness Score"
-      ) %>%
-      addLayersControl(
-        overlayGroups = c("Safety Score", "Brightness Score"),
-        options = layersControlOptions(collapsed = FALSE)
-      ) %>%
-      hideGroup(c("Safety Score", "Brightness Score")) %>%
-      addLegend(
-        pal = pal,
-        values = 1:10,
-        title = "Safety Score",
-        position = "bottomright"
-      ) %>%
-      addLegend(
-        pal = pal1,
-        values = ~ 1:10,
-        title = "Brightness Score",
-        position = "bottomleft"
-      )
+      setMaxBounds(bbox_max[1], bbox_max[2], bbox_max[3], bbox_max[4]) 
+    # %>% 
+    #   addPolylines(
+    #     color = ~ pal(mean_safetyscore),
+    #     weight = 2,
+    #     group = "Safety Score"
+    #   ) %>%
+    #   addPolylines(
+    #     color = ~ pal1(brightness_zscore_rescale),
+    #     weight = 2,
+    #     group = "Brightness Score"
+    #   ) %>%
+    #   addLayersControl(
+    #     overlayGroups = c("Safety Score", "Brightness Score"),
+    #     options = layersControlOptions(collapsed = FALSE)
+    #   ) %>%
+    #   hideGroup(c("Safety Score", "Brightness Score")) %>%
+    #   addLegend(
+    #     pal = pal,
+    #     values = 1:10,
+    #     title = "Safety Score",
+    #     position = "bottomright"
+    #   ) %>%
+    #   addLegend(
+    #     pal = pal1,
+    #     values = ~ 1:10,
+    #     title = "Brightness Score",
+    #     position = "bottomleft"
+    #   )
   })
   return(lmap)
   
@@ -132,20 +136,34 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
     
     path_edges <- path_edges |>
       mutate(new_safetyscore = safetyRating()) |>
-      select(new_safetyscore, osm_id) |>
+      select(new_safetyscore, row_id) |>
       st_drop_geometry()
     
     safety_df <- safety_global[[location_select]]
-    safety_df <- left_join(safety_df, path_edges, by = "osm_id")
+    safety_df <- left_join(safety_df, path_edges, by = "row_id")
     
     row_means <-
-      rowMeans(safety_df[, !names(safety_df) %in% "osm_id"], na.rm = TRUE)
+      rowMeans(safety_df[, !names(safety_df) %in% "row_id"], na.rm = TRUE)
     
     map_roads$mean_safetyscore <- row_means
     
-    map_net <- as_sfnetwork(map_roads, directed = FALSE) |>
+    # map_net <- as_sfnetwork(map_roads, directed = FALSE) |>
+    #   activate("edges") |>
+    #   mutate(edge_len = edge_length())
+    #   
+    
+    
+    map_net <- map_roads |> 
+      as_sfnetwork(directed=TRUE)
+    
+    map_net <- map_net |>
       activate("edges") |>
-      mutate(edge_len = edge_length())
+      mutate(
+        norm_weight = as.numeric(normalize(weight)),
+        norm_safety = normalize(mean_safetyscore),
+        norm_brightness = normalize(brightness_zscore_rescale)
+      )
+    
     
     net_df <- map_net %>%
       activate("edges") %>%
@@ -154,17 +172,17 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
     # Print the mean of the 'mean_safetyscore' column
     print(mean(net_df$mean_safetyscore, na.rm = TRUE))
     
+
     map_net <- map_net |>
       activate("edges") |>
-      mutate(
-        norm_edge_len = as.numeric(normalize(edge_len)),
-        norm_brightness = normalize(brightness_zscore_rescale),
-        norm_safety = normalize(mean_safetyscore)
-      )
+      mutate(composite_weight = norm_weight + norm_safety + norm_brightness)
     
-    map_net <- map_net |>
-      activate("edges") |>
-      mutate(composite_weight = norm_edge_len + norm_safety + norm_brightness)
+
+    # Normalize weights from 0 to 1 so that they can be equally weighted
+    
+    
+
+    
     
   })
   
@@ -227,7 +245,7 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
         route_weight <- switch(
           input$route_pref,
           safe={"composite_weight"},
-          fast={"norm_edge_len"},
+          fast={"norm_weight"},
           lit={"norm_brightness"}
         )
         
@@ -248,6 +266,7 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
           NULL
         })
         
+        
         if (!is.null(shortest_path)) {
           node_ids(shortest_path |> pull(node_paths))
           
@@ -264,6 +283,8 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
           # Create a LINESTRING
           path_linestring <- st_linestring(path_coordinates)
           
+          
+          
           # Create an sf object
           path_sf <-
             st_sf(geometry = st_sfc(path_linestring, crs = st_crs(path_coords)))
@@ -275,9 +296,8 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
           if (!is.null(userPathID()) && is.character(userPathID())) {
             leafletProxy("mymap") %>%
               removeShape(layerId = userPathID())
+            
           }
-          
-          
           # Add the new user path
           leafletProxy("mymap") %>%
             addPolylines(
@@ -286,7 +306,6 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
               weight = 3,
               layerId = userPathID()
             )
-          
           shinyjs::enable("show_modal_btn")
           
         }
@@ -323,7 +342,9 @@ ui <- fluidPage(
           actionButton("location_dc", "Washington D.C."),
           actionButton("location_munich", "Munich"),
           h5("Rate safety"),
-          actionButton("show_modal_btn", "Rate Safety of Route")
+          actionButton("show_modal_btn", "Rate Safety of Route"),
+          h5("Visualize Dimensions"),
+          actionButton("loadButton", "Load Layers")
         ),
         mainPanel(
           tags$style(type = "text/css", "#mymap {height: calc(100vh - 180px) !important;}"),
@@ -486,6 +507,17 @@ server <- function(input, output, session) {
       interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
     
     
+  })
+  
+  
+  observeEvent(input$loadButton, {
+    leafletProxy("mymap") %>%
+      addPolylines(
+            color = ~ pal1(brightness_zscore_rescale),
+            weight = 2,
+            group = "Brightness Score",
+            data=map_roads
+          )
   })
   
   # starting
