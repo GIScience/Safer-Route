@@ -312,6 +312,18 @@ munich_net <- process_graph(munich_roads)
 dc_net <- process_graph(dc_roads)
 ma_net <- process_graph(ma_roads)
 
+munich_roads <- munich_net |>
+  activate("edges") |>
+  st_as_sf()
+dc_roads <- dc_net |>
+  activate("edges") |>
+  st_as_sf()
+ma_roads <- ma_net |>
+  activate("edges") |>
+  st_as_sf()
+
+
+
 # safety_global <- list(
 #   "ma"=roads[["ma"]] |> st_drop_geometry() |> select(c("row_id", "mean_safetyscore")), "munich"=roads[["munich"]] |> st_drop_geometry() |> select(c("row_id", "mean_safetyscore")), "dc"=roads[["dc"]] |> st_drop_geometry() |> select(c("row_id", "mean_safetyscore")))
 
