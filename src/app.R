@@ -27,6 +27,8 @@ pal <- colorNumeric(palette = viridisLite::mako(9), domain = 1:10)
 pal1 <- colorNumeric(palette = viridisLite::cividis(9), domain = 1:10)
 
 
+# safety_global <- list("ma" = roads[["ma"]] |> select(c("row_id", "mean_safetyscore")) |> st_drop_geometry(), "dc" = roads[["dc"]] |> select(c("row_id", "mean_safetyscore")) |> st_drop_geometry(), "munich" = roads[["munich"]] |> select(c("row_id", "mean_safetyscore")) |> st_drop_geometry())
+
 # Normalize weights from 0 to 1 so that they can be equally weighted
 normalize <- function(x) {
   return ((x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
@@ -104,7 +106,6 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
       X = input$mymap_click$lng
     )
     
-    print(userPoints)
     # If there are already two points
     if (nrow(userPoints()) >= 2) {
       # Remove the existing markers from the map
@@ -128,62 +129,72 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
     safetyRating(input$safety_rating)
     removeModal()
     
-    net_edges <- map_net |>
-      activate("edges") |>
-      st_as_sf()
-    
-    path_edges <- net_edges[node_ids()[[1]],]
-    
-    path_edges <- path_edges |>
-      mutate(new_safetyscore = safetyRating()) |>
-      select(new_safetyscore, row_id) |>
-      st_drop_geometry()
-    
-    safety_df <- safety_global[[location_select]]
-    safety_df <- left_join(safety_df, path_edges, by = "row_id")
-    
-    row_means <-
-      rowMeans(safety_df[, !names(safety_df) %in% "row_id"], na.rm = TRUE)
-    
-    map_roads$mean_safetyscore <- row_means
-    
-    # map_net <- as_sfnetwork(map_roads, directed = FALSE) |>
+    # net_edges <- map_net |>
     #   activate("edges") |>
-    #   mutate(edge_len = edge_length())
+    #   st_as_sf()
+    # 
+    # path_edges <- net_edges[node_ids()[[1]],]
+    # 
+    # 
+    # path_edges <- path_edges |>
+    #   mutate(new_safetyscore = safetyRating()) |>
+    #   select(new_safetyscore, row_id) |>
+    #   st_drop_geometry()
+    # 
+    # safety_df <- safety_global[[location_select]]
+    # safety_df <- left_join(safety_df, path_edges, by = "row_id")
+    # 
+    # row_means <-
+    #   rowMeans(safety_df[, !names(safety_df) %in% "row_id"], na.rm = TRUE)
+    # 
+    # check1 <- inner_join(safety_df, path_edges, by = "row_id")
+    # row_means1 <- rowMeans(check1[, !names(check1) %in% "row_id"], na.rm = TRUE)
+    # 
+    # map_roads$mean_safetyscore <- row_means
+    # 
+    # # map_net <- as_sfnetwork(map_roads, directed = FALSE) |>
+    # #   activate("edges") |>
+    # #   mutate(edge_len = edge_length())
+    # #   
+    # 
+    # 
+    # map_net <- map_roads |> 
+    #   as_sfnetwork(directed=TRUE)
+    # 
+    # map_net <- map_net |>
+    #   activate("edges") |>
+    #   mutate(
+    #     norm_weight = as.numeric(normalize(weight)),
+    #     norm_safety = normalize(mean_safetyscore),
+    #     norm_brightness = normalize(brightness_zscore_rescale)
+    #   ) 
+    # 
+    # 
+    # net_df <- map_net %>%
+    #   activate("edges") %>%
+    #   as_tibble()
+    # 
+    # 
+    # 
+    # map_net <- map_net |>
+    #   activate("edges") |>
+    #   mutate(composite_weight = norm_safety)
+    # 
+    # # Normalize weights from 0 to 1 so that they can be equally weighted
+    # if (location_select == "ma") {
+    #   ncol(safety_df)
+    #   ncol(safety_global[["ma"]])
+    #   safety_global[["ma"]] <<- safety_df
+    #   net[["ma"]] <- map_net
+    # } else if (location_select == "dc") {
+    #   safety_global[["dc"]] <<- safety_df
+    #   net[["dc"]] <- map_net
+    # } else if (location_select == "munich") {
+    #   safety_global[["munich"]] <<- safety_df
+    #   net[["munich"]] <- map_net
     #   
-    
-    
-    map_net <- map_roads |> 
-      as_sfnetwork(directed=TRUE)
-    
-    map_net <- map_net |>
-      activate("edges") |>
-      mutate(
-        norm_weight = as.numeric(normalize(weight)),
-        norm_safety = normalize(mean_safetyscore),
-        norm_brightness = normalize(brightness_zscore_rescale)
-      )
-    
-    
-    net_df <- map_net %>%
-      activate("edges") %>%
-      as_tibble()
-    
-    # Print the mean of the 'mean_safetyscore' column
-    print(mean(net_df$mean_safetyscore, na.rm = TRUE))
-    
-
-    map_net <- map_net |>
-      activate("edges") |>
-      mutate(composite_weight = norm_weight + norm_safety + norm_brightness)
-    
-
-    # Normalize weights from 0 to 1 so that they can be equally weighted
-    
-    
-
-    
-    
+    # }
+  
   })
   
   
@@ -254,6 +265,8 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
                            from = from_node,
                            to = to_node,
                            weights = route_weight)
+          
+      
         }, warning = function(w) {
           showModal(
             modalDialog(
@@ -266,6 +279,7 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
           NULL
         })
         
+
         
         if (!is.null(shortest_path)) {
           node_ids(shortest_path |> pull(node_paths))
@@ -315,6 +329,76 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
   return(output)
 }
 
+
+server <- function(input, output, session) {
+  observeEvent(input$location_ma, {
+    location_select <- "ma"
+    
+    
+    map_boundary <- boundaries[[location_select]]
+    map_net <- net[[location_select]]
+    map_roads <- roads[[location_select]]
+    output <-
+      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
+    
+  })
+  
+  observeEvent(input$location_dc, {
+    location_select <- "dc"
+    
+    
+    map_boundary <- boundaries[[location_select]]
+    map_net <- net[[location_select]]
+    map_roads <- roads[[location_select]]
+    
+    output <-
+      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
+    
+  })
+  
+  observeEvent(input$location_munich, {
+    location_select <- "munich"
+    
+    
+    map_boundary <- boundaries[[location_select]]
+    map_net <- net[[location_select]]
+    map_roads <- roads[[location_select]]
+    
+    
+    output <-
+      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
+    
+    
+  })
+  
+  
+  # observeEvent(input$loadButton, {
+  #   leafletProxy("mymap") %>%
+  #     addPolylines(
+  #           color = ~ pal1(brightness_zscore_rescale),
+  #           weight = 2,
+  #           group = "Brightness Score",
+  #           data=map_roads
+  #         )
+  # })
+  
+  # starting
+  
+  location_select <- "ma"
+  
+  map_boundary <- boundaries[[location_select]]
+  map_net <- net[[location_select]]
+  map_roads <- roads[[location_select]]
+  
+  shinyjs::disable("show_modal_btn")
+  
+  output <-
+    interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
+  
+  
+}
+
+
 ui <- fluidPage(
   theme = shinytheme("paper"),
   navbarPage(
@@ -324,7 +408,7 @@ ui <- fluidPage(
       sidebarLayout(
         sidebarPanel(
           tags$p(
-            "Begin routing by clicking where you are on the map and then clicking again for your destination. After your route is generated, you can press the 'Rate Safety of Route' button to rate your route on a scale of 1-10. Keep clicking to generate a new route!",
+            "Begin routing by clicking where you are on the map and then clicking again for your destination. After your route is generated, you can press the 'Rate Safety of Route' button to rate your route on a scale of 1-10. Keep clicking to generate a new route! This is a prototype so the rating function isn't fully implemented and loading times may vary.",
             style = "font-size: 16px"
           ),
           h5("Route Options"),
@@ -344,7 +428,6 @@ ui <- fluidPage(
           h5("Rate safety"),
           actionButton("show_modal_btn", "Rate Safety of Route"),
           h5("Visualize Dimensions"),
-          actionButton("loadButton", "Load Layers")
         ),
         mainPanel(
           tags$style(type = "text/css", "#mymap {height: calc(100vh - 180px) !important;}"),
@@ -366,8 +449,8 @@ ui <- fluidPage(
           ),
           tags$p(
             "Within our application, the primary dataset employed is the network graph. Users can interact with this dataset through the user-friendly frontend interface to generate routes. They have the option to choose from three types of route: fastest, safest, and brightest. The fastest route emphasizes road segment lengths exclusively, the safest relies on user generated scores, and the brightest is based on the density of street lamps per road segment. Users play an active role in enhancing route safety in the Safer Route app. After creating routes, they have the opportunity to rate them based on their experience. These scores then update the overall safety score for road segments therefore other users benefit from this valuable information, making the application a dynamic and collaborative platform for urban navigation.", style = "font-size: 16px")
+        )
       )
-    )
     ),
     tabPanel(
       "Team",
@@ -465,76 +548,6 @@ ui <- fluidPage(
   )
 )
 
-
-
-
-server <- function(input, output, session) {
-  observeEvent(input$location_ma, {
-    location_select <- "ma"
-    
-    
-    map_boundary <- boundaries[[location_select]]
-    map_net <- net[[location_select]]
-    map_roads <- roads[[location_select]]
-    output <-
-      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
-    
-  })
-  
-  observeEvent(input$location_dc, {
-    location_select <- "dc"
-    
-    
-    map_boundary <- boundaries[[location_select]]
-    map_net <- net[[location_select]]
-    map_roads <- roads[[location_select]]
-    
-    output <-
-      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
-    
-  })
-  
-  observeEvent(input$location_munich, {
-    location_select <- "munich"
-    
-    
-    map_boundary <- boundaries[[location_select]]
-    map_net <- net[[location_select]]
-    map_roads <- roads[[location_select]]
-    
-    
-    output <-
-      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
-    
-    
-  })
-  
-  
-  observeEvent(input$loadButton, {
-    leafletProxy("mymap") %>%
-      addPolylines(
-            color = ~ pal1(brightness_zscore_rescale),
-            weight = 2,
-            group = "Brightness Score",
-            data=map_roads
-          )
-  })
-  
-  # starting
-  
-  location_select <- "ma"
-  
-  map_boundary <- boundaries[[location_select]]
-  map_net <- net[[location_select]]
-  map_roads <- roads[[location_select]]
-  
-  shinyjs::disable("show_modal_btn")
-  
-  output <-
-    interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
-  
-  
-}
 
 
 shinyApp(ui = ui, server = server)
