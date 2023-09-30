@@ -25,6 +25,8 @@ tryCatch({
 pal <- colorNumeric(palette = viridisLite::mako(9), domain = 1:10)
 pal1 <- colorNumeric(palette = viridisLite::cividis(9), domain = 1:10)
 
+safety_global <- list("ma" = roads[["ma"]] |> select(c("osm_id", "mean_safetyscore")) |> st_drop_geometry(), "dc" = roads[["dc"]] |> select(c("osm_id", "mean_safetyscore")) |> st_drop_geometry(), "munich" = roads[["munich"]] |> select(c("osm_id", "mean_safetyscore")) |> st_drop_geometry())
+
 
 # Normalize weights from 0 to 1 so that they can be equally weighted
 normalize <- function(x) {
@@ -141,11 +143,19 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
     row_means <-
       rowMeans(safety_df[, !names(safety_df) %in% "osm_id"], na.rm = TRUE)
     
+    check1 <- inner_join(safety_df, path_edges, by = "osm_id")
+    row_means1 <- rowMeans(check1[, !names(check1) %in% "osm_id"], na.rm = TRUE)
+    print("hi")
+    print(row_means1)
+    print("bye") 
+    
     map_roads$mean_safetyscore <- row_means
     
     map_net <- as_sfnetwork(map_roads, directed = FALSE) |>
       activate("edges") |>
       mutate(edge_len = edge_length())
+    
+    #print(inner_join(map_roads[c("osm_id", "mean_safetyscore")], safety_df, by = "osm_id"))
     
     net_df <- map_net %>%
       activate("edges") %>%
@@ -165,6 +175,18 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
     map_net <- map_net |>
       activate("edges") |>
       mutate(composite_weight = norm_edge_len + norm_safety + norm_brightness)
+    
+    if (location_select == "ma") {
+      safety_global[["ma"]] <<- safety_df
+      net[["ma"]] <- map_net
+    } else if (location_select == "dc") {
+      safety_global[["dc"]] <<- safety_df
+      net[["dc"]] <- map_net
+    } else if (location_select == "munich") {
+      safety_global[["munich"]] <<- safety_df
+      net[["munich"]] <- map_net
+      
+    }
     
   })
   
@@ -211,22 +233,13 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
       }
       else {
         
-    # if (nrow(userPoints()) == 2) {
-    #   points_df <- data.frame(
-    #     X = c(userPoints()[1, 'X'], userPoints()[2, 'X']),
-    #     Y = c(userPoints()[1, 'Y'], userPoints()[2, 'Y'])
-    #   )
-      
-      # Convert the dataframe into an sf object
-        #map_roads <- st_network_blend(map_net, points_sf)
-        
         # Get the nearest features
         from_node <- st_nearest_feature(points_sf[1, ], map_net)
         to_node <- st_nearest_feature(points_sf[2, ], map_net)
         
         route_weight <- switch(
           input$route_pref,
-          safe={"composite_weight"},
+          safe={"norm_safety"},
           fast={"norm_edge_len"},
           lit={"norm_brightness"}
         )
@@ -296,6 +309,65 @@ interactive_map <- function(input, output, map_boundary, map_net, map_roads, loc
   return(output)
 }
 
+
+server <- function(input, output, session) {
+  observeEvent(input$location_ma, {
+    location_select <- "ma"
+    
+    
+    map_boundary <- boundaries[[location_select]]
+    map_net <- net[[location_select]]
+    map_roads <- roads[[location_select]]
+    output <-
+      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
+    
+  })
+  
+  observeEvent(input$location_dc, {
+    location_select <- "dc"
+    
+    
+    map_boundary <- boundaries[[location_select]]
+    map_net <- net[[location_select]]
+    map_roads <- roads[[location_select]]
+    
+    output <-
+      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
+    
+  })
+  
+  observeEvent(input$location_munich, {
+    location_select <- "munich"
+    
+    
+    map_boundary <- boundaries[[location_select]]
+    map_net <- net[[location_select]]
+    map_roads <- roads[[location_select]]
+    
+    
+    output <-
+      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
+    
+
+  })
+  
+  # starting
+  
+  location_select <- "ma"
+  
+  map_boundary <- boundaries[[location_select]]
+  map_net <- net[[location_select]]
+  map_roads <- roads[[location_select]]
+  
+  shinyjs::disable("show_modal_btn")
+  
+  output <-
+    interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
+  
+
+}
+
+
 ui <- fluidPage(
   theme = shinytheme("paper"),
   navbarPage(
@@ -345,8 +417,8 @@ ui <- fluidPage(
           ),
           tags$p(
             "Within our application, the primary dataset employed is the network graph. Users can interact with this dataset through the user-friendly frontend interface to generate routes. They have the option to choose from three types of route: fastest, safest, and brightest. The fastest route emphasizes road segment lengths exclusively, the safest relies on user generated scores, and the brightest is based on the density of street lamps per road segment. Users play an active role in enhancing route safety in the Safer Route app. After creating routes, they have the opportunity to rate them based on their experience. These scores then update the overall safety score for road segments therefore other users benefit from this valuable information, making the application a dynamic and collaborative platform for urban navigation.", style = "font-size: 16px")
+        )
       )
-    )
     ),
     tabPanel(
       "Team",
@@ -443,66 +515,6 @@ ui <- fluidPage(
     )
   )
 )
-
-
-
-
-server <- function(input, output, session) {
-  observeEvent(input$location_ma, {
-    location_select <- "ma"
-    
-    
-    map_boundary <- boundaries[[location_select]]
-    map_net <- net[[location_select]]
-    map_roads <- roads[[location_select]]
-    output <-
-      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
-    
-  })
-  
-  observeEvent(input$location_dc, {
-    location_select <- "dc"
-    
-    
-    map_boundary <- boundaries[[location_select]]
-    map_net <- net[[location_select]]
-    map_roads <- roads[[location_select]]
-    
-    output <-
-      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
-    
-  })
-  
-  observeEvent(input$location_munich, {
-    location_select <- "munich"
-    
-    
-    map_boundary <- boundaries[[location_select]]
-    map_net <- net[[location_select]]
-    map_roads <- roads[[location_select]]
-    
-    
-    output <-
-      interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
-    
-    
-  })
-  
-  # starting
-  
-  location_select <- "ma"
-  
-  map_boundary <- boundaries[[location_select]]
-  map_net <- net[[location_select]]
-  map_roads <- roads[[location_select]]
-  
-  shinyjs::disable("show_modal_btn")
-  
-  output <-
-    interactive_map(input, output, map_boundary, map_net, map_roads, location_select)
-  
-  
-}
 
 
 shinyApp(ui = ui, server = server)
