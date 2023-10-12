@@ -1,6 +1,6 @@
 # Safer Route
 
-### To begin routing check out the live app [here](http://lemberg.geog.uni-heidelberg.de:3838/)!
+### To begin routing check out the live app [here](http://lemberg.geog.uni-heidelberg.de:3838/Safer-Route/)!
 
 
 _A Collaborative Mapping Web-App_
